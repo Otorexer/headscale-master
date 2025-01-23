@@ -3,7 +3,7 @@ import os
 
 def get_db_connection():
     """Connect to the SQLite database only if it exists and configure WAL mode."""
-    db_path = '/var/lib/headscale/db.sqlite'  # Updated path to match the volume mapping
+    db_path = '/var/lib/headscale/db.sqlite'  # Ensure this path matches your volume mapping
 
     # Check if the database file exists
     if not os.path.exists(db_path):
@@ -37,8 +37,26 @@ def get_db_connection():
 
         print(f"wal_autocheckpoint set to {current_autocheckpoint} successfully.")
 
+        # Ensure 'web_users' table exists
+        ensure_web_users_table(conn)
+
         return conn
 
     except sqlite3.Error as e:
         # Handle SQLite-specific errors
         raise RuntimeError(f"An error occurred while connecting to the database: {e}")
+
+def ensure_web_users_table(conn):
+    """Check if 'web_users' table exists and create it if not."""
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS web_users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            public_id TEXT UNIQUE,
+            name TEXT NOT NULL,
+            password TEXT NOT NULL,
+            admin BOOLEAN NOT NULL DEFAULT 0
+        );
+    """)
+    conn.commit()
+    print("'web_users' table ensured.")

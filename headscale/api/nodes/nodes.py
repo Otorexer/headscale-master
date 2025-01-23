@@ -3,6 +3,7 @@ from datetime import datetime
 from db import get_db_connection
 import docker
 import os
+from auth import token_required
 
 # Create a Blueprint for node routes
 nodes_bp = Blueprint('nodes', __name__)
@@ -14,20 +15,22 @@ docker_client = docker.from_env()
 HEADSCALE_CONTAINER_NAME = os.getenv('HEADSCALE_CONTAINER_NAME', 'headscale')
 
 @nodes_bp.route('/nodes', methods=['GET'])
-def get_nodes():
+@token_required
+def get_nodes(current_user):
     """Fetch all nodes, including the user name."""
     conn = get_db_connection()
     nodes = conn.execute('''
-        SELECT nodes.*, users.name AS user_name
+        SELECT nodes.*, web_users.name AS user_name
         FROM nodes
-        LEFT JOIN users ON nodes.user_id = users.id
+        LEFT JOIN web_users ON nodes.user_id = web_users.id
         WHERE nodes.deleted_at IS NULL
     ''').fetchall()
     conn.close()
     return jsonify([dict(node) for node in nodes])
 
 @nodes_bp.route('/nodes/<int:node_id>', methods=['GET'])
-def get_node(node_id):
+@token_required
+def get_node(current_user, node_id):
     """Fetch a single node by ID."""
     conn = get_db_connection()
     node = conn.execute('SELECT * FROM nodes WHERE id = ? AND deleted_at IS NULL', (node_id,)).fetchone()
@@ -37,16 +40,17 @@ def get_node(node_id):
     return jsonify(dict(node))
 
 @nodes_bp.route('/nodes', methods=['POST'])
-def create_node():
+@token_required
+def create_node(current_user):
     """Create a new node."""
     data = request.json
     machine_key = data.get('machine_key')
     node_key = data.get('node_key')
-    user_id = data.get('user_id')
+    user_id = current_user['id']
     created_at = datetime.utcnow()
 
-    if not machine_key or not node_key or not user_id:
-        return jsonify({'error': 'machine_key, node_key, and user_id are required'}), 400
+    if not machine_key or not node_key:
+        return jsonify({'error': 'machine_key and node_key are required'}), 400
 
     conn = get_db_connection()
     conn.execute(
@@ -61,7 +65,8 @@ def create_node():
     return jsonify({'message': 'Node created successfully!'}), 201
 
 @nodes_bp.route('/nodes/<int:node_id>', methods=['PUT'])
-def update_node(node_id):
+@token_required
+def update_node(current_user, node_id):
     """Update an existing node by ID."""
     data = request.json
     if not data:
@@ -131,7 +136,8 @@ def update_node(node_id):
         return jsonify({'error': str(e)}), 500
 
 @nodes_bp.route('/nodes/<int:node_id>', methods=['DELETE'])
-def delete_node(node_id):
+@token_required
+def delete_node(current_user, node_id):
     """Delete a node by ID using the headscale CLI command."""
     try:
         # Get the headscale container

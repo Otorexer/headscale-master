@@ -1,11 +1,13 @@
 from flask import Blueprint, jsonify
 from db import get_db_connection
+from auth import token_required
 
 # Create a Blueprint for information resources
 resources_bp = Blueprint('resources', __name__)
 
 @resources_bp.route('/resources/nodes/count', methods=['GET'])
-def count_nodes():
+@token_required
+def count_nodes(current_user):
     """Count all nodes in the database."""
     conn = get_db_connection()
     count = conn.execute('SELECT COUNT(*) AS total FROM nodes WHERE deleted_at IS NULL').fetchone()
@@ -17,7 +19,8 @@ def count_nodes():
         return jsonify({'error': 'Unable to count nodes'}), 500
 
 @resources_bp.route('/resources/users/count', methods=['GET'])
-def count_users():
+@token_required
+def count_users(current_user):
     """Count all users in the database."""
     conn = get_db_connection()
     count = conn.execute('SELECT COUNT(*) AS total FROM users WHERE deleted_at IS NULL').fetchone()
@@ -29,7 +32,8 @@ def count_users():
         return jsonify({'error': 'Unable to count users'}), 500
 
 @resources_bp.route('/resources/summary', methods=['GET'])
-def get_summary():
+@token_required
+def get_summary(current_user):
     """Get a summary of counts for nodes and users."""
     conn = get_db_connection()
     try:

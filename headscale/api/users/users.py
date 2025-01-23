@@ -3,6 +3,7 @@ from datetime import datetime
 from db import get_db_connection
 import requests
 import os
+from auth import token_required
 
 # Create a Blueprint for user routes
 users_bp = Blueprint('users', __name__)
@@ -12,7 +13,8 @@ users_bp = Blueprint('users', __name__)
 API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:5000")
 
 @users_bp.route('/users', methods=['GET'])
-def get_users():
+@token_required
+def get_users(current_user):
     """Fetch all users."""
     conn = get_db_connection()
     users = conn.execute('SELECT * FROM users WHERE deleted_at IS NULL').fetchall()
@@ -20,7 +22,8 @@ def get_users():
     return jsonify([dict(user) for user in users])
 
 @users_bp.route('/users/<int:user_id>', methods=['GET'])
-def get_user(user_id):
+@token_required
+def get_user(current_user, user_id):
     """Fetch a single user by ID."""
     conn = get_db_connection()
     user = conn.execute(
@@ -33,7 +36,8 @@ def get_user(user_id):
     return jsonify(dict(user))
 
 @users_bp.route('/users', methods=['POST'])
-def create_user():
+@token_required
+def create_user(current_user):
     """Create a new user with name as required and display_name and email as optional."""
     data = request.json
     name = data.get('name')  # Required field
@@ -59,7 +63,8 @@ def create_user():
     return jsonify({'message': 'User created successfully!'}), 201
 
 @users_bp.route('/users/<int:user_id>', methods=['PUT'])
-def update_user(user_id):
+@token_required
+def update_user(current_user, user_id):
     """Update an existing user's information."""
     data = request.json
     name = data.get('name')  # Required field
@@ -96,7 +101,8 @@ def update_user(user_id):
     return jsonify({'message': 'User updated successfully!'}), 200
 
 @users_bp.route('/users/<int:user_id>', methods=['DELETE'])
-def delete_user(user_id):
+@token_required
+def delete_user(current_user, user_id):
     """
     Delete a user by ID, removing them from the database.
     Also deletes any nodes belonging to this user first.

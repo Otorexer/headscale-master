@@ -1,11 +1,13 @@
 from flask import Blueprint, jsonify
 from db import get_db_connection
+from auth import token_required
 
 # Create a Blueprint for the new API
 user_keys_bp = Blueprint('user_keys', __name__)
 
 @user_keys_bp.route('/users/keys', methods=['GET'])
-def list_users_with_keys():
+@token_required
+def list_users_with_keys(current_user):
     """List all users and their corresponding pre-auth keys."""
     conn = get_db_connection()
     data = conn.execute('''

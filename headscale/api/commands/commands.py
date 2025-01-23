@@ -1,25 +1,24 @@
 from flask import Blueprint, request, jsonify
 import docker
 import os
+from auth import token_required
 
 # Create a Blueprint for command routes
 commands_bp = Blueprint('commands', __name__)
 
 # Initialize Docker client
-# Ensure that the Docker environment variables are correctly set.
-# If Docker is running on a different host or requires special configuration,
-# you may need to adjust the parameters accordingly.
 docker_client = docker.from_env()
 
 # Name of the target container
 HEADSCALE_CONTAINER_NAME = os.getenv('HEADSCALE_CONTAINER_NAME', 'headscale')
 
 @commands_bp.route('/commands/register', methods=['POST'])
-def register_node():
+@token_required
+def register_node(current_user):
     """
     Register a node in the headscale container by executing the
     headscale nodes register command with the provided username and key.
-    
+
     Expected JSON payload:
     {
         "username": "USERNAME",
