@@ -1,0 +1,808 @@
+{% extends "base.html" %}
+{% block title %}Users{% endblock %}
+{% block content %}
+<h2>Users List</h2>
+
+<!-- Filter Options -->
+<div style="margin-bottom: 10px">
+  <label for="filter-by" style="margin-right: 10px">Filter By:</label>
+  <select id="filter-by" style="padding: 5px" onchange="filterAndSortUsers()">
+    <option value="id">ID</option>
+    <option value="name">Name</option>
+    <option value="display_name">Display Name</option>
+    <option value="email">Email</option>
+  </select>
+
+  <label for="sort-order" style="margin-left: 20px; margin-right: 10px">Sort Order:</label>
+  <select id="sort-order" style="padding: 5px" onchange="filterAndSortUsers()">
+    <option value="asc">Ascending</option>
+    <option value="desc">Descending</option>
+  </select>
+</div>
+
+<!-- Search Box -->
+<input type="text" id="search-box" placeholder="Search..." style="margin-bottom: 10px; width: 100%; padding: 10px"
+  oninput="filterAndSortUsers()" />
+
+<!-- Create User Button -->
+<div style="margin-bottom: 10px">
+  <button onclick="showCreateUserModal()">Create User</button>
+</div>
+
+<!-- Table -->
+<table id="users-table" border="1" style="width: 100%; text-align: left">
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>Name</th>
+      <th>Display Name</th>
+      <th>Email</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    <!-- Data will be populated here dynamically -->
+  </tbody>
+</table>
+
+<!-- Pre-Auth Keys Modal -->
+<div id="keys-modal" style="
+    display: none;
+    position: fixed;
+    top: 20%;
+    left: 20%;
+    width: 60%;
+    background: white;
+    border: 1px solid black;
+    padding: 20px;
+    z-index: 1000;
+    overflow-y: auto;
+    max-height: 60%;
+  ">
+  <h3>Pre-Auth Keys</h3>
+  <table id="keys-table" border="1" style="width: 100%; text-align: left">
+    <thead>
+      <tr>
+        <th>Key ID</th>
+        <th>API Key</th>
+        <th>Reusable</th>
+        <th>Ephemeral</th>
+        <th>Expiration</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- Keys will be populated here dynamically -->
+    </tbody>
+  </table>
+  <button onclick="closeKeysModal()">Close</button>
+</div>
+
+<!-- Create User Modal -->
+<div id="create-user-modal" style="
+    display: none;
+    position: fixed;
+    top: 20%;
+    left: 30%;
+    width: 40%;
+    background: white;
+    border: 1px solid black;
+    padding: 20px;
+    z-index: 1000;
+  ">
+  <h3>Create New User</h3>
+  <label for="new-user-name">Name:</label>
+  <input type="text" id="new-user-name" placeholder="Enter user name"
+    style="margin-bottom: 10px; width: 100%; padding: 10px" />
+
+  <label for="new-user-display-name">Display Name (Optional):</label>
+  <input type="text" id="new-user-display-name" placeholder="Enter display name"
+    style="margin-bottom: 10px; width: 100%; padding: 10px" />
+
+  <label for="new-user-email">Email (Optional):</label>
+  <input type="email" id="new-user-email" placeholder="Enter email address"
+    style="margin-bottom: 10px; width: 100%; padding: 10px" />
+
+  <button onclick="createUser()">Create</button>
+  <button onclick="closeCreateUserModal()">Cancel</button>
+</div>
+
+<!-- Edit User Modal -->
+<div id="edit-user-modal" style="
+    display: none;
+    position: fixed;
+    top: 20%;
+    left: 30%;
+    width: 40%;
+    background: white;
+    border: 1px solid black;
+    padding: 20px;
+    z-index: 1000;
+  ">
+  <h3>Edit User</h3>
+  <input type="hidden" id="edit-user-id" />
+
+  <label for="edit-user-name">Name:</label>
+  <input type="text" id="edit-user-name" placeholder="Enter user name"
+    style="margin-bottom: 10px; width: 100%; padding: 10px" />
+
+  <label for="edit-user-display-name">Display Name (Optional):</label>
+  <input type="text" id="edit-user-display-name" placeholder="Enter display name"
+    style="margin-bottom: 10px; width: 100%; padding: 10px" />
+
+  <label for="edit-user-email">Email (Optional):</label>
+  <input type="email" id="edit-user-email" placeholder="Enter email address"
+    style="margin-bottom: 10px; width: 100%; padding: 10px" />
+
+  <button onclick="updateUser()">Save Changes</button>
+  <button onclick="closeEditUserModal()">Cancel</button>
+</div>
+
+<!-- Create Pre-Auth Key Modal -->
+<div id="create-key-modal" style="
+    display: none;
+    position: fixed;
+    top: 15%;
+    left: 35%;
+    width: 30%;
+    background: white;
+    border: 1px solid black;
+    padding: 20px;
+    z-index: 1000;
+  ">
+  <h3>Create Pre-Auth Key</h3>
+  <input type="hidden" id="create-key-user-id" />
+
+  <label for="new-key">API Key:</label>
+  <input type="text" id="new-key" placeholder="Enter API Key" style="margin-bottom: 10px; width: 100%; padding: 10px" />
+
+  <label for="new-key-reusable">
+    <input type="checkbox" id="new-key-reusable" />
+    Reusable
+  </label>
+  <br />
+
+  <label for="new-key-ephemeral">
+    <input type="checkbox" id="new-key-ephemeral" />
+    Ephemeral
+  </label>
+  <br />
+
+  <label for="new-key-tags">Tags (Optional):</label>
+  <input type="text" id="new-key-tags" placeholder="Enter tags"
+    style="margin-bottom: 10px; width: 100%; padding: 10px" />
+
+  <!-- New "No Expiration" Checkbox -->
+  <label for="no-expiration" style="display: block; margin-bottom: 10px;">
+    <input type="checkbox" id="no-expiration" onchange="toggleNoExpiration()" />
+    No Expiration
+  </label>
+
+  <label for="new-key-expiration">Expiration:</label>
+  <input type="datetime-local" id="new-key-expiration" style="margin-bottom: 10px; width: 100%; padding: 10px" />
+
+  <button onclick="createPreAuthKey()">Create Key</button>
+  <button onclick="closeCreateKeyModal()">Cancel</button>
+</div>
+
+<!-- Edit Pre-Auth Key Modal -->
+<div id="edit-key-modal" style="
+    display: none;
+    position: fixed;
+    top: 15%;
+    left: 35%;
+    width: 30%;
+    background: white;
+    border: 1px solid black;
+    padding: 20px;
+    z-index: 1000;
+  ">
+  <h3>Edit Pre-Auth Key</h3>
+  <input type="hidden" id="edit-key-id" />
+  <input type="hidden" id="edit-key-user-id" />
+
+  <label for="edit-key">API Key:</label>
+  <input type="text" id="edit-key" placeholder="Enter API Key"
+    style="margin-bottom: 10px; width: 100%; padding: 10px" />
+
+  <label for="edit-key-reusable">
+    <input type="checkbox" id="edit-key-reusable" />
+    Reusable
+  </label>
+  <br />
+
+  <label for="edit-key-ephemeral">
+    <input type="checkbox" id="edit-key-ephemeral" />
+    Ephemeral
+  </label>
+  <br />
+
+  <label for="edit-key-tags">Tags (Optional):</label>
+  <input type="text" id="edit-key-tags" placeholder="Enter tags"
+    style="margin-bottom: 10px; width: 100%; padding: 10px" />
+
+  <!-- New "No Expiration" Checkbox -->
+  <label for="edit-no-expiration" style="display: block; margin-bottom: 10px;">
+    <input type="checkbox" id="edit-no-expiration" onchange="toggleEditNoExpiration()" />
+    No Expiration
+  </label>
+
+  <label for="edit-key-expiration">Expiration (Optional):</label>
+  <input type="datetime-local" id="edit-key-expiration" style="margin-bottom: 10px; width: 100%; padding: 10px" />
+
+  <!-- New "Extend by 1 Hour" Button -->
+  <button type="button" onclick="extendKeyByOneHour()">Extend by 1 Hour</button>
+
+  <button onclick="updatePreAuthKey()">Save Changes</button>
+  <button onclick="closeEditKeyModal()">Cancel</button>
+</div>
+
+<script>
+  let usersData = []; // Store users data for searching and sorting
+
+  // Fetch data from the API and populate the table
+  async function fetchUsers() {
+    try {
+      const response = await fetch(`${API_BASE_URL}/users`); // Use the base URL
+      if (!response.ok) {
+        throw new Error("Failed to fetch data");
+      }
+
+      usersData = await response.json(); // Store data for filtering and sorting
+      filterAndSortUsers(); // Display initial data
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      alert("Failed to load users. Please try again later.");
+    }
+  }
+
+  // Display users in the table
+  function displayUsers(users) {
+    const tableBody = document.querySelector("#users-table tbody");
+    tableBody.innerHTML = ""; // Clear the table
+
+    users.forEach((user) => {
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${user.id}</td>
+        <td>${user.name}</td>
+        <td>${user.display_name || "-"}</td>
+        <td>${user.email || "-"}</td>
+        <td>
+          <button onclick="showEditUserModal(${user.id})">Edit User</button>
+          <button onclick="fetchUserKeys(${user.id})" style="margin-left: 5px;">Show Keys</button>
+          <button onclick="showCreateKeyModal(${user.id})" style="margin-left: 5px;">Create Key</button>
+          <button onclick="confirmDeleteUser(${user.id})" style="margin-left: 5px;">Delete User</button>
+        </td>
+      `;
+      tableBody.appendChild(row);
+    });
+  }
+
+  // Open the create user modal
+  function showCreateUserModal() {
+    document.getElementById("create-user-modal").style.display = "block";
+  }
+
+  // Close the create user modal
+  function closeCreateUserModal() {
+    document.getElementById("create-user-modal").style.display = "none";
+    // Clear the input fields
+    document.getElementById("new-user-name").value = "";
+    document.getElementById("new-user-display-name").value = "";
+    document.getElementById("new-user-email").value = "";
+  }
+
+  // Create a new user
+  async function createUser() {
+    const userName = document.getElementById("new-user-name").value.trim();
+    const displayName = document
+      .getElementById("new-user-display-name")
+      .value.trim();
+    const email = document.getElementById("new-user-email").value.trim();
+
+    if (!userName) {
+      alert("User name is required!");
+      return;
+    }
+
+    // Prepare the payload with optional fields
+    const payload = { name: userName };
+    if (displayName) payload.display_name = displayName;
+    if (email) payload.email = email;
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/users`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to create user");
+      }
+
+      alert("User created successfully!");
+      closeCreateUserModal();
+      fetchUsers(); // Refresh the users list
+    } catch (error) {
+      console.error("Error creating user:", error);
+      alert(`Failed to create user. ${error.message}`);
+    }
+  }
+
+  // Fetch keys for a specific user
+  async function fetchUserKeys(userId) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/pre_auth_keys`); // Fetch all keys
+      if (!response.ok) {
+        throw new Error("Failed to fetch keys");
+      }
+
+      const data = await response.json(); // Response includes an array of objects with keys, user_id, and username
+
+      // Filter the keys for the specific user
+      const userKeys = data.filter((keyEntry) => keyEntry.user_id === userId);
+      const username =
+        usersData.find((user) => user.id === userId)?.name || "Unknown User";
+
+      displayUserKeys(userKeys, username);
+    } catch (error) {
+      console.error("Error fetching keys:", error);
+      alert("Failed to fetch user keys. Please try again.");
+    }
+  }
+
+  // Display the fetched keys in the modal
+  function displayUserKeys(keys, username) {
+    const modal = document.getElementById("keys-modal");
+    const tableBody = document.querySelector("#keys-table tbody");
+
+    document.querySelector("#keys-modal h3").textContent = `Pre-Auth Keys for ${username}`;
+    tableBody.innerHTML = ""; // Clear the table
+
+    if (keys.length === 0) {
+      const row = document.createElement("tr");
+      row.innerHTML = `<td colspan="6" style="text-align: center;">No keys available.</td>`;
+      tableBody.appendChild(row);
+    } else {
+      keys.forEach((key) => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${key.id}</td>
+          <td>${key.key}</td>
+          <td>${key.reusable ? "Yes" : "No"}</td>
+          <td>${key.ephemeral ? "Yes" : "No"}</td>
+          <td>${key.expiration ? (key.expiration === "2100-01-01T00:00:00Z" || key.expiration === "2100-01-01T00:00" ? "Never" : new Date(key.expiration).toLocaleString()) : "Never"}</td>
+          <td>
+            <button onclick="showEditKeyModal(${key.id}, ${key.user_id})">Edit Key</button>
+            <!-- Add more action buttons here if needed -->
+          </td>
+        `;
+        tableBody.appendChild(row);
+      });
+    }
+
+    modal.style.display = "block"; // Show the modal
+  }
+
+  // Close the keys modal
+  function closeKeysModal() {
+    document.getElementById("keys-modal").style.display = "none";
+  }
+
+  // Filter and sort users
+  function filterAndSortUsers() {
+    const searchTerm = document.querySelector("#search-box").value.toLowerCase();
+    const filterBy = document.querySelector("#filter-by").value; // Selected field
+    const sortOrder = document.querySelector("#sort-order").value; // Ascending or descending
+
+    let filteredUsers = usersData.filter((user) => {
+      const value = user[filterBy]?.toString().toLowerCase() || ""; // Safely access the field
+      return value.includes(searchTerm);
+    });
+
+    // Sort the filtered users
+    filteredUsers = filteredUsers.sort((a, b) => {
+      const aValue = userValue(a, filterBy);
+      const bValue = userValue(b, filterBy);
+
+      if (sortOrder === "asc") {
+        return aValue > bValue ? 1 : aValue < bValue ? -1 : 0;
+      } else {
+        return aValue < bValue ? 1 : aValue > bValue ? -1 : 0;
+      }
+    });
+
+    displayUsers(filteredUsers); // Display filtered and sorted users
+  }
+
+  function userValue(user, filterBy) {
+    return user[filterBy]?.toString().toLowerCase() || "";
+  }
+
+  // Show the edit user modal and populate it with the user's current data
+  function showEditUserModal(userId) {
+    // Find the user data
+    const user = usersData.find((u) => u.id === userId);
+    if (!user) {
+      alert("User not found.");
+      return;
+    }
+
+    // Populate the modal fields with current user data
+    document.getElementById("edit-user-id").value = user.id;
+    document.getElementById("edit-user-name").value = user.name;
+    document.getElementById("edit-user-display-name").value = user.display_name || "";
+    document.getElementById("edit-user-email").value = user.email || "";
+
+    // Show the modal
+    document.getElementById("edit-user-modal").style.display = "block";
+  }
+
+  // Close the edit user modal
+  function closeEditUserModal() {
+    document.getElementById("edit-user-modal").style.display = "none";
+    // Clear the input fields
+    document.getElementById("edit-user-id").value = "";
+    document.getElementById("edit-user-name").value = "";
+    document.getElementById("edit-user-display-name").value = "";
+    document.getElementById("edit-user-email").value = "";
+  }
+
+  // Update the user with the edited data
+  async function updateUser() {
+    const userId = document.getElementById("edit-user-id").value;
+    const userName = document.getElementById("edit-user-name").value.trim();
+    const displayName = document
+      .getElementById("edit-user-display-name")
+      .value.trim();
+    const email = document.getElementById("edit-user-email").value.trim();
+
+    if (!userName) {
+      alert("User name is required!");
+      return;
+    }
+
+    // Prepare the payload with optional fields
+    const payload = { name: userName };
+    if (displayName) payload.display_name = displayName;
+    if (email) payload.email = email;
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/users/${userId}`, {
+        method: "PUT", // Assuming PUT is used for full updates; use PATCH if partial
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to update user");
+      }
+
+      alert("User updated successfully!");
+      closeEditUserModal();
+      fetchUsers(); // Refresh the users list
+    } catch (error) {
+      console.error("Error updating user:", error);
+      alert(`Failed to update user. ${error.message}`);
+    }
+  }
+
+  // Open the create pre-auth key modal
+  function showCreateKeyModal(userId) {
+    // Set the user ID in the hidden input
+    document.getElementById("create-key-user-id").value = userId;
+
+    // Clear previous inputs
+    document.getElementById("new-key").value = "";
+    document.getElementById("new-key-reusable").checked = false;
+    document.getElementById("new-key-ephemeral").checked = false;
+    document.getElementById("new-key-tags").value = "";
+    document.getElementById("no-expiration").checked = false;
+
+    // Set default expiration to exactly 1 hour from now
+    const now = new Date();
+    const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000);
+    const formattedDate = oneHourLater.toISOString().slice(0, 16); // Format for datetime-local
+    document.getElementById("new-key-expiration").value = formattedDate;
+    document.getElementById("new-key-expiration").disabled = false;
+
+    // Show the modal
+    document.getElementById("create-key-modal").style.display = "block";
+  }
+
+  // Close the create pre-auth key modal
+  function closeCreateKeyModal() {
+    document.getElementById("create-key-modal").style.display = "none";
+    // Clear the input fields
+    document.getElementById("create-key-user-id").value = "";
+    document.getElementById("new-key").value = "";
+    document.getElementById("new-key-reusable").checked = false;
+    document.getElementById("new-key-ephemeral").checked = false;
+    document.getElementById("new-key-tags").value = "";
+    document.getElementById("new-key-expiration").value = "";
+    document.getElementById("no-expiration").checked = false;
+    document.getElementById("new-key-expiration").disabled = false;
+  }
+
+  // Toggle the "No Expiration" option in Create Key Modal
+  function toggleNoExpiration() {
+    const noExpirationCheckbox = document.getElementById("no-expiration");
+    const expirationInput = document.getElementById("new-key-expiration");
+
+    if (noExpirationCheckbox.checked) {
+      // Set expiration to January 1, 2100 and disable the input
+      expirationInput.value = "2100-01-01T00:00";
+      expirationInput.disabled = true;
+    } else {
+      // Reset to 1 hour from now
+      const now = new Date();
+      const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000);
+      const formattedDate = oneHourLater.toISOString().slice(0, 16); // Format for datetime-local
+      expirationInput.value = formattedDate;
+      expirationInput.disabled = false;
+    }
+  }
+
+  // Create a new pre-auth key for a user
+  async function createPreAuthKey() {
+    const userId = document.getElementById("create-key-user-id").value;
+    const key = document.getElementById("new-key").value.trim();
+    const reusable = document.getElementById("new-key-reusable").checked
+      ? 1
+      : 0;
+    const ephemeral = document.getElementById("new-key-ephemeral").checked
+      ? 1
+      : 0;
+    const tags = document.getElementById("new-key-tags").value.trim();
+    const noExpiration = document.getElementById("no-expiration").checked;
+    let expirationInput = document.getElementById("new-key-expiration").value;
+    let expiration = null;
+
+    if (!key) {
+      alert("API Key is required!");
+      return;
+    }
+
+    if (noExpiration) {
+      expiration = "2100-01-01T00:00:00Z"; // ISO format for January 1, 2100
+    } else if (expirationInput) {
+      const expirationDate = new Date(expirationInput);
+      if (isNaN(expirationDate.getTime())) {
+        alert("Invalid expiration date!");
+        return;
+      }
+      expiration = expirationDate.toISOString();
+    }
+
+    // Prepare the payload
+    const payload = {
+      key: key,
+      user_id: parseInt(userId),
+      reusable: reusable,
+      ephemeral: ephemeral,
+      tags: tags,
+      expiration: expiration,
+    };
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/pre_auth_keys`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to create pre-auth key");
+      }
+
+      alert("Pre-auth key created successfully!");
+      closeCreateKeyModal();
+      fetchUserKeys(parseInt(userId)); // Refresh the keys list for the user
+    } catch (error) {
+      console.error("Error creating pre-auth key:", error);
+      alert(`Failed to create pre-auth key. ${error.message}`);
+    }
+  }
+
+  // Toggle "No Expiration" in Edit Key Modal
+  function toggleEditNoExpiration() {
+    const noExpirationCheckbox = document.getElementById("edit-no-expiration");
+    const expirationInput = document.getElementById("edit-key-expiration");
+
+    if (noExpirationCheckbox.checked) {
+      // Set expiration to January 1, 2100 and disable the input
+      expirationInput.value = "2100-01-01T00:00";
+      expirationInput.disabled = true;
+    } else {
+      // Enable the expiration input and reset to current expiration or default to 1 hour from now
+      expirationInput.disabled = false;
+      const currentExpiration = expirationInput.value;
+      if (!currentExpiration || currentExpiration === "2100-01-01T00:00") {
+        const now = new Date();
+        const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000);
+        const formattedDate = oneHourLater.toISOString().slice(0, 16); // Format for datetime-local
+        expirationInput.value = formattedDate;
+      }
+    }
+  }
+
+  // Extend the key's expiration by 1 hour from now
+  function extendKeyByOneHour() {
+    const expirationInput = document.getElementById("edit-key-expiration");
+    const noExpirationCheckbox = document.getElementById("edit-no-expiration");
+
+    // Uncheck "No Expiration" if it's checked
+    if (noExpirationCheckbox.checked) {
+      noExpirationCheckbox.checked = false;
+      expirationInput.disabled = false;
+    }
+
+    const now = new Date();
+    const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000);
+    const formattedDate = oneHourLater.toISOString().slice(0, 16); // Format for datetime-local
+    expirationInput.value = formattedDate;
+  }
+
+  // Show the edit pre-auth key modal and populate it with the key's current data
+  async function showEditKeyModal(keyId, userId) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/pre_auth_keys/${keyId}`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch key details");
+      }
+
+      const keyData = await response.json();
+
+      // Populate the modal fields with current key data
+      document.getElementById("edit-key-id").value = keyData.id;
+      document.getElementById("edit-key-user-id").value = keyData.user_id;
+      document.getElementById("edit-key").value = keyData.key;
+      document.getElementById("edit-key-reusable").checked = !!keyData.reusable;
+      document.getElementById("edit-key-ephemeral").checked = !!keyData.ephemeral;
+      document.getElementById("edit-key-tags").value = keyData.tags || "";
+      document.getElementById("edit-key-expiration").value = keyData.expiration
+        ? new Date(keyData.expiration).toISOString().slice(0, 16)
+        : "";
+
+      // Set "No Expiration" checkbox based on the expiration value
+      const noExpirationCheckbox = document.getElementById("edit-no-expiration");
+      const expirationInput = document.getElementById("edit-key-expiration");
+      if (keyData.expiration === "2100-01-01T00:00:00Z" || keyData.expiration === "2100-01-01T00:00") {
+        noExpirationCheckbox.checked = true;
+        expirationInput.value = "2100-01-01T00:00";
+        expirationInput.disabled = true;
+      } else {
+        noExpirationCheckbox.checked = false;
+        expirationInput.disabled = false;
+      }
+
+      // Show the modal
+      document.getElementById("edit-key-modal").style.display = "block";
+    } catch (error) {
+      console.error("Error fetching key details:", error);
+      alert("Failed to fetch key details. Please try again.");
+    }
+  }
+
+  // Close the edit pre-auth key modal
+  function closeEditKeyModal() {
+    document.getElementById("edit-key-modal").style.display = "none";
+    // Clear the input fields
+    document.getElementById("edit-key-id").value = "";
+    document.getElementById("edit-key-user-id").value = "";
+    document.getElementById("edit-key").value = "";
+    document.getElementById("edit-key-reusable").checked = false;
+    document.getElementById("edit-key-ephemeral").checked = false;
+    document.getElementById("edit-key-tags").value = "";
+    document.getElementById("edit-key-expiration").value = "";
+    document.getElementById("edit-no-expiration").checked = false;
+    document.getElementById("edit-key-expiration").disabled = false;
+  }
+
+  // Update an existing pre-auth key with edited data
+  async function updatePreAuthKey() {
+    const keyId = document.getElementById("edit-key-id").value;
+    const userId = document.getElementById("edit-key-user-id").value;
+    const key = document.getElementById("edit-key").value.trim();
+    const reusable = document.getElementById("edit-key-reusable").checked
+      ? 1
+      : 0;
+    const ephemeral = document.getElementById("edit-key-ephemeral").checked
+      ? 1
+      : 0;
+    const tags = document.getElementById("edit-key-tags").value.trim();
+    const noExpiration = document.getElementById("edit-no-expiration").checked;
+    const expirationInput = document.getElementById("edit-key-expiration").value;
+    let expiration = null;
+
+    if (noExpiration) {
+      expiration = "2100-01-01T00:00:00Z"; // ISO format for January 1, 2100
+    } else if (expirationInput) {
+      const expirationDate = new Date(expirationInput);
+      if (isNaN(expirationDate.getTime())) {
+        alert("Invalid expiration date!");
+        return;
+      }
+      expiration = expirationDate.toISOString();
+    }
+
+    if (!key) {
+      alert("API Key is required!");
+      return;
+    }
+
+    // Prepare the payload
+    const payload = {
+      key: key,
+      user_id: parseInt(userId),
+      reusable: reusable,
+      ephemeral: ephemeral,
+      tags: tags,
+      expiration: expiration,
+    };
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/pre_auth_keys/${keyId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to update pre-auth key");
+      }
+
+      alert("Pre-auth key updated successfully!");
+      closeEditKeyModal();
+      fetchUserKeys(parseInt(userId)); // Refresh the keys list for the user
+    } catch (error) {
+      console.error("Error updating pre-auth key:", error);
+      alert(`Failed to update pre-auth key. ${error.message}`);
+    }
+  }
+
+  // Confirm deletion of a user
+  function confirmDeleteUser(userId) {
+    if (confirm("Are you sure you want to delete this user? This action cannot be undone.")) {
+      deleteUser(userId);
+    }
+  }
+
+  // Delete a user
+  async function deleteUser(userId) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/users/${userId}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to delete user");
+      }
+      alert("User deleted successfully!");
+      fetchUsers(); // Refresh the users list
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      alert(`Failed to delete user. ${error.message}`);
+    }
+  }
+
+  // Fetch and display users on page load
+  document.addEventListener("DOMContentLoaded", () => {
+    fetchUsers();
+  });
+</script>
+{% endblock %}

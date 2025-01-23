@@ -1,0 +1,332 @@
+{% extends "base.html" %}
+{% block title %}Deploy Node{% endblock %}
+
+{% block content %}
+<h2>Deploy</h2>
+
+<!-- Container for displaying the generated Tailscale up command -->
+<div style="margin-bottom: 1rem;">
+    <label><strong>Generated Command:</strong></label>
+    <pre id="generatedCommand" style="background: #eee; padding: 1rem; white-space: pre-wrap;"></pre>
+</div>
+
+<!-- "General" section to replicate the reference screenshot categories -->
+<div style="border: 1px solid #ccc; padding: 1rem; margin-bottom: 1rem;">
+    <h3>General</h3>
+
+    <div>
+        <input type="checkbox" id="shieldsUp">
+        <label for="shieldsUp">Shields Up <small>(--shields-up)</small></label>
+    </div>
+
+    <div>
+        <input type="checkbox" id="operator">
+        <label for="operator">Operator <small>(--advertise-connector)</small></label>
+    </div>
+
+    <div>
+        <label for="authKey">PreAuth Key <small>(--auth-key)</small></label><br />
+        <input type="text" id="authKey" placeholder="(Optional) Enter auth key...">
+    </div>
+
+    <div>
+        <input type="checkbox" id="qrCode">
+        <label for="qrCode">Generate QR Code <small>(--qr)</small></label>
+    </div>
+
+    <div>
+        <input type="checkbox" id="forceReauth">
+        <label for="forceReauth">Force Reauthentication <small>(--force-reauth)</small></label>
+    </div>
+
+    <div>
+        <input type="checkbox" id="reset">
+        <label for="reset">Reset <small>(--reset)</small></label>
+    </div>
+
+    <div>
+        <input type="checkbox" id="sshServer">
+        <label for="sshServer">SSH Server <small>(--ssh)</small></label>
+    </div>
+
+    <div>
+        <label for="hostname">Hostname <small>(--hostname)</small></label><br />
+        <input type="text" id="hostname" placeholder="(Optional) Override hostname...">
+    </div>
+</div>
+
+<!-- "Advertise" section -->
+<div style="border: 1px solid #ccc; padding: 1rem; margin-bottom: 1rem;">
+    <h3>Advertise</h3>
+
+    <div>
+        <input type="checkbox" id="advertiseExitNode">
+        <label for="advertiseExitNode">Advertise Exit Node <small>(--advertise-exit-node)</small></label>
+    </div>
+
+    <div>
+        <label for="advertiseTags">Advertise Tags <small>(--advertise-tags)</small></label><br />
+        <input type="text" id="advertiseTags" placeholder="Comma-separated, e.g. tag:server,tag:another...">
+    </div>
+
+    <div>
+        <label for="advertiseRoutes">Advertise Routes <small>(--advertise-routes)</small></label><br />
+        <input type="text" id="advertiseRoutes" placeholder="Comma-separated CIDRs, e.g. 10.0.0.0/24,192.168.1.0/24">
+    </div>
+</div>
+
+<!-- "Exit Node" section -->
+<div style="border: 1px solid #ccc; padding: 1rem; margin-bottom: 1rem;">
+    <h3>Exit Node</h3>
+    <div>
+        <label for="exitNode">Exit Node <small>(--exit-node)</small></label><br />
+        <input type="text" id="exitNode" placeholder="(Optional) IP or base name, e.g. 100.64.x.x">
+    </div>
+    <div>
+        <input type="checkbox" id="exitNodeLan">
+        <label for="exitNodeLan">Allow LAN Access <small>(--exit-node-allow-lan-access)</small></label>
+    </div>
+</div>
+
+<!-- "Accept" section -->
+<div style="border: 1px solid #ccc; padding: 1rem;">
+    <h3>Accept</h3>
+    <div>
+        <input type="checkbox" id="acceptDns" checked>
+        <label for="acceptDns">Accept DNS <small>(--accept-dns)</small></label>
+    </div>
+    <div>
+        <input type="checkbox" id="acceptRoutes" checked>
+        <label for="acceptRoutes">Accept Routes <small>(--accept-routes)</small></label>
+    </div>
+</div>
+
+<!-- Button to copy the command to clipboard -->
+<div style="margin-top: 1rem;">
+    <button onclick="copyCommand()">Copy Command to Clipboard</button>
+    <span id="copyMsg" style="margin-left: 10px; color: green;"></span>
+</div>
+
+<script>
+    // Default Tailscale up values (based on --help output)
+    // For booleans: use true if the help says (default true), otherwise false
+    const state = {
+        shieldsUp: false,               // --shields-up (default false)
+        operator: false,                // --advertise-connector (default false)
+        authKey: "",                    // --auth-key (default empty)
+        qrCode: false,                  // --qr (default false)
+        forceReauth: false,            // --force-reauth (default false)
+        reset: false,                   // --reset (default false)
+        sshServer: false,               // --ssh (default false)
+        hostname: "",                   // --hostname (default none)
+        advertiseExitNode: false,       // --advertise-exit-node (default false)
+        advertiseTags: "",              // --advertise-tags (default empty)
+        advertiseRoutes: "",            // --advertise-routes (default empty)
+        exitNode: "",                   // --exit-node (default empty)
+        exitNodeLan: false,             // --exit-node-allow-lan-access (default false)
+        acceptDns: true,                // --accept-dns (default true)
+        acceptRoutes: true,             // --accept-routes (default true)
+    };
+
+    function buildUpCommand() {
+        // Always start with tailscale up --login-server=HEADSCALE_SERVER
+        let cmd = `tailscale up --login-server=${HEADSCALE_SERVER}`;
+
+        // Now append flags, ONLY if they differ from default
+        // (Tailscale up requires you to specify all changed settings or use --reset)
+
+        // --shields-up (false by default, so only add if true)
+        if (state.shieldsUp) {
+            cmd += " --shields-up";
+        }
+
+        // --advertise-connector
+        if (state.operator) {
+            cmd += " --advertise-connector";
+        }
+
+        // --auth-key
+        if (state.authKey.trim() !== "") {
+            // We assume user typed the entire key or "file:path"
+            cmd += ` --auth-key="${state.authKey.trim()}"`;
+        }
+
+        // --qr
+        if (state.qrCode) {
+            cmd += " --qr";
+        }
+
+        // --force-reauth
+        if (state.forceReauth) {
+            cmd += " --force-reauth";
+        }
+
+        // --reset
+        if (state.reset) {
+            cmd += " --reset";
+        }
+
+        // --ssh
+        if (state.sshServer) {
+            cmd += " --ssh";
+        }
+
+        // --hostname
+        if (state.hostname.trim() !== "") {
+            cmd += ` --hostname="${state.hostname.trim()}"`;
+        }
+
+        // --advertise-exit-node
+        if (state.advertiseExitNode) {
+            cmd += " --advertise-exit-node";
+        }
+
+        // --advertise-tags
+        if (state.advertiseTags.trim() !== "") {
+            // e.g. "tag:server,tag:example"
+            cmd += ` --advertise-tags="${state.advertiseTags.trim()}"`;
+        }
+
+        // --advertise-routes
+        if (state.advertiseRoutes.trim() !== "") {
+            // e.g. "10.0.0.0/8,192.168.1.0/24"
+            cmd += ` --advertise-routes="${state.advertiseRoutes.trim()}"`;
+        }
+
+        // --exit-node
+        if (state.exitNode.trim() !== "") {
+            cmd += ` --exit-node="${state.exitNode.trim()}"`;
+        }
+
+        // --exit-node-allow-lan-access
+        if (state.exitNodeLan) {
+            cmd += " --exit-node-allow-lan-access";
+        }
+
+        // --accept-dns (true by default, so add only if false)
+        if (!state.acceptDns) {
+            cmd += " --accept-dns=false";
+        }
+
+        // --accept-routes (true by default, so add only if false)
+        if (!state.acceptRoutes) {
+            cmd += " --accept-routes=false";
+        }
+
+        return cmd;
+    }
+
+    function updateCommandDisplay() {
+        const cmd = buildUpCommand();
+        document.getElementById("generatedCommand").innerText = cmd;
+    }
+
+    // Copy the generated command to the clipboard
+    function copyCommand() {
+        const cmd = buildUpCommand();
+        navigator.clipboard.writeText(cmd).then(() => {
+            document.getElementById("copyMsg").textContent = "Copied!";
+            setTimeout(() => {
+                document.getElementById("copyMsg").textContent = "";
+            }, 1500);
+        });
+    }
+
+    // Attach event listeners on page load
+    document.addEventListener("DOMContentLoaded", () => {
+        // For each input, when changed, update state and refresh the command
+        const shieldsUpCheck = document.getElementById("shieldsUp");
+        shieldsUpCheck.addEventListener("change", () => {
+            state.shieldsUp = shieldsUpCheck.checked;
+            updateCommandDisplay();
+        });
+
+        const operatorCheck = document.getElementById("operator");
+        operatorCheck.addEventListener("change", () => {
+            state.operator = operatorCheck.checked;
+            updateCommandDisplay();
+        });
+
+        const authKeyInput = document.getElementById("authKey");
+        authKeyInput.addEventListener("input", () => {
+            state.authKey = authKeyInput.value;
+            updateCommandDisplay();
+        });
+
+        const qrCodeCheck = document.getElementById("qrCode");
+        qrCodeCheck.addEventListener("change", () => {
+            state.qrCode = qrCodeCheck.checked;
+            updateCommandDisplay();
+        });
+
+        const forceReauthCheck = document.getElementById("forceReauth");
+        forceReauthCheck.addEventListener("change", () => {
+            state.forceReauth = forceReauthCheck.checked;
+            updateCommandDisplay();
+        });
+
+        const resetCheck = document.getElementById("reset");
+        resetCheck.addEventListener("change", () => {
+            state.reset = resetCheck.checked;
+            updateCommandDisplay();
+        });
+
+        const sshCheck = document.getElementById("sshServer");
+        sshCheck.addEventListener("change", () => {
+            state.sshServer = sshCheck.checked;
+            updateCommandDisplay();
+        });
+
+        const hostnameInput = document.getElementById("hostname");
+        hostnameInput.addEventListener("input", () => {
+            state.hostname = hostnameInput.value;
+            updateCommandDisplay();
+        });
+
+        const advertiseExitCheck = document.getElementById("advertiseExitNode");
+        advertiseExitCheck.addEventListener("change", () => {
+            state.advertiseExitNode = advertiseExitCheck.checked;
+            updateCommandDisplay();
+        });
+
+        const advertiseTagsInput = document.getElementById("advertiseTags");
+        advertiseTagsInput.addEventListener("input", () => {
+            state.advertiseTags = advertiseTagsInput.value;
+            updateCommandDisplay();
+        });
+
+        const advertiseRoutesInput = document.getElementById("advertiseRoutes");
+        advertiseRoutesInput.addEventListener("input", () => {
+            state.advertiseRoutes = advertiseRoutesInput.value;
+            updateCommandDisplay();
+        });
+
+        const exitNodeInput = document.getElementById("exitNode");
+        exitNodeInput.addEventListener("input", () => {
+            state.exitNode = exitNodeInput.value;
+            updateCommandDisplay();
+        });
+
+        const exitNodeLanCheck = document.getElementById("exitNodeLan");
+        exitNodeLanCheck.addEventListener("change", () => {
+            state.exitNodeLan = exitNodeLanCheck.checked;
+            updateCommandDisplay();
+        });
+
+        const acceptDnsCheck = document.getElementById("acceptDns");
+        acceptDnsCheck.addEventListener("change", () => {
+            state.acceptDns = acceptDnsCheck.checked;
+            updateCommandDisplay();
+        });
+
+        const acceptRoutesCheck = document.getElementById("acceptRoutes");
+        acceptRoutesCheck.addEventListener("change", () => {
+            state.acceptRoutes = acceptRoutesCheck.checked;
+            updateCommandDisplay();
+        });
+
+        // Initialize the command display when page loads
+        updateCommandDisplay();
+    });
+</script>
+{% endblock %}

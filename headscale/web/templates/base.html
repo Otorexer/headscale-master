@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}HeadscaleGUI{% endblock %}</title>
+  <script>
+    const API_BASE_URL = "{{ API_BASE_URL }}"; // Accessing the API base URL
+    const HEADSCALE_SERVER = "{{ HEADSCALE_SERVER }}"; // Accessing the Headscale server URL
+  </script>
+  <!-- Base CSS -->
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+    }
+
+    .container {
+      display: flex;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    .sidebar {
+      width: 200px;
+      background-color: #333;
+      color: white;
+      padding: 15px;
+      box-sizing: border-box;
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: -200px;
+      /* Hide sidebar initially */
+      transition: left 0.3s ease;
+    }
+
+    .sidebar.open {
+      left: 0;
+      /* Show sidebar when open */
+    }
+
+    .sidebar a {
+      display: block;
+      color: white;
+      text-decoration: none;
+      padding: 10px 0;
+      border-bottom: 1px solid #444;
+    }
+
+    .sidebar a:hover {
+      background-color: #444;
+    }
+
+    .main-content {
+      flex-grow: 1;
+      padding: 20px;
+      box-sizing: border-box;
+      margin-left: 0;
+      transition: margin-left 0.3s ease;
+    }
+
+    .main-content.shifted {
+      margin-left: 200px;
+    }
+
+    header {
+      background-color: #222;
+      color: white;
+      padding: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .menu-container {
+      display: flex;
+      align-items: center;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 1.5em;
+      margin-left: 10px;
+      /* Add spacing between the menu icon and text */
+    }
+
+    h1 a {
+      color: white;
+      text-decoration: none;
+    }
+
+    .menu-toggle {
+      background-color: #444;
+      color: white;
+      border: none;
+      padding: 10px;
+      cursor: pointer;
+      border-radius: 5px;
+    }
+
+    .menu-toggle:hover {
+      background-color: #555;
+    }
+
+    .counter {
+      font-size: 0.9em;
+      color: white;
+    }
+
+    /* Disable animation temporarily on page load */
+    .no-transition * {
+      transition: none !important;
+    }
+  </style>
+  <!-- Other CSS -->
+  <style>
+  </style>
+</head>
+
+<body class="no-transition">
+  <header>
+    <div class="menu-container">
+      <button class="menu-toggle" onclick="toggleMenu()">☰</button>
+      <h1><a href="/">HeadscaleGUI</a></h1>
+    </div>
+    <div class="counter" id="counter">Loading...</div>
+  </header>
+  <div class="container">
+    <!-- Sidebar Navigation -->
+    <div class="sidebar" id="sidebar">
+      <h2>Navigation</h2>
+      <a href="/" onclick="persistMenuState()">Home</a>
+      <a href="/nodes" onclick="persistMenuState()">Nodes</a>
+      <a href="/users" onclick="persistMenuState()">Users</a>
+      <a href="/pre_auth_keys" onclick="persistMenuState()">Pre-Auth Keys</a>
+      <a href="/register" onclick="persistMenuState()">Register</a>
+      <a href="/deploy" onclick="persistMenuState()">Deploy</a>
+    </div>
+
+    <!-- Main Content -->
+    <main class="main-content" id="main-content">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+
+  <script>
+    const sidebar = document.getElementById("sidebar");
+    const mainContent = document.getElementById("main-content");
+    const toggleButton = document.querySelector(".menu-toggle");
+    const counterElement = document.getElementById("counter");
+    const body = document.body;
+
+    // Fetch and update the user and node counter
+    async function updateCounter() {
+      try {
+        const response = await fetch(`${API_BASE_URL}/resources/summary`); // Use the API base URL
+        if (!response.ok) {
+          throw new Error("Failed to fetch counter data");
+        }
+        const data = await response.json();
+        counterElement.textContent = `Users: ${data.total_users} | Nodes: ${data.total_nodes}`;
+      } catch (error) {
+        console.error("Error fetching counter:", error);
+        counterElement.textContent = "Error loading data";
+      }
+    }
+
+    // Call updateCounter immediately on page load
+    document.addEventListener("DOMContentLoaded", () => {
+      updateCounter();
+
+      const savedState = sessionStorage.getItem("menuState");
+      if (savedState === "open") {
+        sidebar.classList.add("open");
+        mainContent.classList.add("shifted");
+        document.addEventListener("click", closeMenuOnOutsideClick);
+      }
+
+      // Remove the no-transition class after rendering
+      setTimeout(() => {
+        body.classList.remove("no-transition");
+      }, 50);
+    });
+
+    // Toggle the menu state
+    function toggleMenu() {
+      sidebar.classList.toggle("open");
+      mainContent.classList.toggle("shifted");
+
+      // Save menu state in session storage
+      if (sidebar.classList.contains("open")) {
+        sessionStorage.setItem("menuState", "open");
+        document.addEventListener("click", closeMenuOnOutsideClick);
+      } else {
+        sessionStorage.setItem("menuState", "closed");
+        document.removeEventListener("click", closeMenuOnOutsideClick);
+      }
+    }
+
+    // Persist menu state across page loads
+    function persistMenuState() {
+      sessionStorage.setItem("menuState", "open");
+    }
+
+    // Close the menu when clicking outside
+    function closeMenuOnOutsideClick(event) {
+      const isClickInside =
+        sidebar.contains(event.target) || toggleButton.contains(event.target);
+      if (!isClickInside) {
+        sidebar.classList.remove("open");
+        mainContent.classList.remove("shifted");
+        sessionStorage.setItem("menuState", "closed");
+        document.removeEventListener("click", closeMenuOnOutsideClick);
+      }
+    }
+  </script>
+</body>
+
+</html>

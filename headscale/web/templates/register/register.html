@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Register Node</h2>
+<form id="registerForm">
+    <label for="username">Username:</label>
+    <input type="text" id="username" name="username" required>
+    <br>
+    <label for="key">Key:</label>
+    <input type="text" id="key" name="key" required>
+    <br>
+    <button type="submit">Register</button>
+</form>
+<div id="result"></div>
+<script>
+    document.getElementById('registerForm').addEventListener('submit', async function (event) {
+        event.preventDefault();
+        const username = document.getElementById('username').value;
+        const key = document.getElementById('key').value;
+        const resultDiv = document.getElementById('result');
+        resultDiv.textContent = 'Registering...';
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/commands/register`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, key })
+            });
+
+            const data = await response.json();
+            if (response.ok) {
+                resultDiv.textContent = 'Registration successful: ' + data.message;
+            } else {
+                resultDiv.textContent = 'Error: ' + (data.error || 'Unknown error');
+            }
+        } catch (error) {
+            resultDiv.textContent = 'Request failed: ' + error.message;
+        }
+    });
+</script>
+{% endblock %}
