@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Login{% endblock %}
+{% block content %}
+<h2>Login</h2>
+<form id="loginForm">
+    <label for="username">Username:</label>
+    <input type="text" id="username" required>
+    <br><br>
+
+    <label for="password">Password:</label>
+    <input type="password" id="password" required>
+    <br><br>
+
+    <button type="submit">Login</button>
+</form>
+<div id="result" style="margin-top: 10px; color: red;"></div>
+
+<script>
+    document.getElementById('loginForm').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const username = document.getElementById('username').value.trim();
+        const password = document.getElementById('password').value.trim();
+        const resultDiv = document.getElementById('result');
+
+        // Prepare Basic Auth
+        const authString = btoa(`${username}:${password}`);
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/login`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Basic ' + authString
+                }
+            });
+            const data = await response.json();
+
+            if (response.ok && data.token) {
+                // Save token in localStorage
+                localStorage.setItem('token', data.token);
+                // Redirect to home
+                window.location.href = '/';
+            } else {
+                resultDiv.textContent = 'Login failed: ' + (data.message || data.error || 'Unknown error');
+            }
+        } catch (error) {
+            console.error(error);
+            resultDiv.textContent = 'Error: ' + error.message;
+        }
+    });
+</script>
+{% endblock %}

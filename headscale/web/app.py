@@ -25,7 +25,8 @@ def get_headscale_server(config_path):
         print(f"Error reading Headscale config: {e}")
         # Fallback to a default value or handle as needed
         return "https://default-headscale-server.com"
-    
+
+
 HEADSCALE_SERVER = get_headscale_server(HEADSCALE_CONFIG_PATH)
 
 
@@ -33,36 +34,48 @@ HEADSCALE_SERVER = get_headscale_server(HEADSCALE_CONFIG_PATH)
 @app.context_processor
 def inject_api_base_url():
     """
-    This function makes the API_BASE_URL available to all templates.
+    This function makes the API_BASE_URL and HEADSCALE_SERVER available to all templates.
     """
     return {
         "API_BASE_URL": API_BASE_URL,
         "HEADSCALE_SERVER": HEADSCALE_SERVER
     }
 
+
 @app.route("/")
 def home():
     return render_template("index.html")
+
 
 @app.route("/nodes")
 def nodes():
     return render_template("nodes/nodes.html")
 
+
 @app.route("/users")
 def users():
     return render_template("users/users.html")
+
 
 @app.route("/pre_auth_keys")
 def pre_auth_keys():
     return render_template("pre_auth_keys/pre_auth_keys.html")
 
+
 @app.route('/register')
 def register():
     return render_template('register/register.html')
 
+
 @app.route('/deploy')
 def deploy():
     return render_template('deploy/deploy.html')
+
+
+@app.route('/login')
+def login():
+    return render_template("login.html")
+
 
 if __name__ == "__main__":
     app.run(debug=True, host='0.0.0.0', port=8080)

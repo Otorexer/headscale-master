@@ -8,7 +8,38 @@
   <script>
     const API_BASE_URL = "{{ API_BASE_URL }}"; // Accessing the API base URL
     const HEADSCALE_SERVER = "{{ HEADSCALE_SERVER }}"; // Accessing the Headscale server URL
+
+    /**
+     * A small helper to wrap fetch calls with the x-access-tokens header
+     * and automatically redirect to /login if no token or 401 response.
+     */
+    async function authFetch(url, options = {}) {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        // If user has no token, we can redirect (but do NOT do it if they're already on /login).
+        if (window.location.pathname !== '/login') {
+          window.location.href = '/login';
+        }
+        throw new Error('No token found');
+      }
+
+      const headers = options.headers || {};
+      headers['Content-Type'] = headers['Content-Type'] || 'application/json';
+      headers['x-access-tokens'] = token;
+      options.headers = headers;
+
+      const response = await fetch(url, options);
+      if (response.status === 401) {
+        // If we got 401, also go to /login (unless we're already there).
+        if (window.location.pathname !== '/login') {
+          window.location.href = '/login';
+        }
+        throw new Error('Unauthorized, redirecting to login');
+      }
+      return response;
+    }
   </script>
+
   <!-- Base CSS -->
   <style>
     body {
@@ -83,7 +114,7 @@
       margin: 0;
       font-size: 1.5em;
       margin-left: 10px;
-      /* Add spacing between the menu icon and text */
+      /* Add spacing between the icon and text */
     }
 
     h1 a {
@@ -109,13 +140,10 @@
       color: white;
     }
 
-    /* Disable animation temporarily on page load */
+    /* Disable animation on page load */
     .no-transition * {
       transition: none !important;
     }
-  </style>
-  <!-- Other CSS -->
-  <style>
   </style>
 </head>
 
@@ -127,6 +155,7 @@
     </div>
     <div class="counter" id="counter">Loading...</div>
   </header>
+
   <div class="container">
     <!-- Sidebar Navigation -->
     <div class="sidebar" id="sidebar">
@@ -137,6 +166,7 @@
       <a href="/pre_auth_keys" onclick="persistMenuState()">Pre-Auth Keys</a>
       <a href="/register" onclick="persistMenuState()">Register</a>
       <a href="/deploy" onclick="persistMenuState()">Deploy</a>
+      <a href="/login" onclick="persistMenuState()">Login</a>
     </div>
 
     <!-- Main Content -->
@@ -152,10 +182,26 @@
     const counterElement = document.getElementById("counter");
     const body = document.body;
 
-    // Fetch and update the user and node counter
+    /**
+     * Only call the protected API if:
+     *   - we have a token
+     *   - AND we are not currently on /login
+     */
     async function updateCounter() {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        // If no token, do NOT fetch anything. Just show something else.
+        counterElement.textContent = "Not logged in";
+        return;
+      }
+      // If we *are* on /login, skip calling the summary endpoint to avoid 401 loops.
+      if (window.location.pathname === '/login') {
+        counterElement.textContent = "Login page";
+        return;
+      }
+      // Otherwise, do the normal fetch
       try {
-        const response = await fetch(`${API_BASE_URL}/resources/summary`); // Use the API base URL
+        const response = await authFetch(`${API_BASE_URL}/resources/summary`);
         if (!response.ok) {
           throw new Error("Failed to fetch counter data");
         }
@@ -167,7 +213,6 @@
       }
     }
 
-    // Call updateCounter immediately on page load
     document.addEventListener("DOMContentLoaded", () => {
       updateCounter();
 
@@ -177,19 +222,15 @@
         mainContent.classList.add("shifted");
         document.addEventListener("click", closeMenuOnOutsideClick);
       }
-
-      // Remove the no-transition class after rendering
+      // Remove no-transition after page load
       setTimeout(() => {
         body.classList.remove("no-transition");
       }, 50);
     });
 
-    // Toggle the menu state
     function toggleMenu() {
       sidebar.classList.toggle("open");
       mainContent.classList.toggle("shifted");
-
-      // Save menu state in session storage
       if (sidebar.classList.contains("open")) {
         sessionStorage.setItem("menuState", "open");
         document.addEventListener("click", closeMenuOnOutsideClick);
@@ -198,13 +239,9 @@
         document.removeEventListener("click", closeMenuOnOutsideClick);
       }
     }
-
-    // Persist menu state across page loads
     function persistMenuState() {
       sessionStorage.setItem("menuState", "open");
     }
-
-    // Close the menu when clicking outside
     function closeMenuOnOutsideClick(event) {
       const isClickInside =
         sidebar.contains(event.target) || toggleButton.contains(event.target);

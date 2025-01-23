@@ -1,31 +1,23 @@
 {% extends "base.html" %}
 {% block content %}
 <h2>Register Node</h2>
-<form id="registerForm">
-    <label for="username">Username:</label>
-    <input type="text" id="username" name="username" required>
-    <br>
-    <label for="key">Key:</label>
-    <input type="text" id="key" name="key" required>
-    <br>
-    <button type="submit">Register</button>
-</form>
-<div id="result"></div>
 <script>
-    document.getElementById('registerForm').addEventListener('submit', async function (event) {
-        event.preventDefault();
-        const username = document.getElementById('username').value;
-        const key = document.getElementById('key').value;
+    if (!localStorage.getItem('token')) {
+        window.location.href = '/login';
+    }
+
+    async function registerNode(ev) {
+        ev.preventDefault();
+        const username = document.getElementById('username').value.trim();
+        const key = document.getElementById('key').value.trim();
         const resultDiv = document.getElementById('result');
         resultDiv.textContent = 'Registering...';
 
         try {
-            const response = await fetch(`${API_BASE_URL}/commands/register`, {
+            const response = await authFetch(`${API_BASE_URL}/commands/register`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username, key })
             });
-
             const data = await response.json();
             if (response.ok) {
                 resultDiv.textContent = 'Registration successful: ' + data.message;
@@ -35,6 +27,17 @@
         } catch (error) {
             resultDiv.textContent = 'Request failed: ' + error.message;
         }
-    });
+    }
 </script>
+
+<form id="registerForm" onsubmit="registerNode(event)">
+    <label for="username">Username:</label>
+    <input type="text" id="username" required>
+    <br>
+    <label for="key">Key:</label>
+    <input type="text" id="key" required>
+    <br>
+    <button type="submit">Register</button>
+</form>
+<div id="result" style="margin-top: 10px;"></div>
 {% endblock %}

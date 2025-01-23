@@ -4,6 +4,11 @@
 {% block content %}
 <h2>Deploy</h2>
 
+<script>
+    if (!localStorage.getItem('token')) {
+      window.location.href = '/login';
+    }
+  </script>
 <!-- Container for displaying the generated Tailscale up command -->
 <div style="margin-bottom: 1rem;">
     <label><strong>Generated Command:</strong></label>

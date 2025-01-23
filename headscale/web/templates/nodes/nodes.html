@@ -2,6 +2,221 @@
 {% block title %}Nodes{% endblock %}
 {% block content %}
 <h2>Nodes List</h2>
+
+<script>
+  // Immediately redirect to /login if no stored token:
+  if (!localStorage.getItem('token')) {
+    window.location.href = '/login';
+  }
+
+  let nodesData = []; // Store nodes data for searching and sorting
+
+  // Fetch data from the API and populate the table
+  async function fetchNodes() {
+    try {
+      const response = await authFetch(`${API_BASE_URL}/nodes`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch data");
+      }
+      nodesData = await response.json(); // Store data
+      filterAndSortNodes();
+    } catch (error) {
+      console.error("Error fetching nodes:", error);
+      alert("Failed to load nodes or not authorized.");
+    }
+  }
+
+  // Filter & Sort, then display
+  function displayNodes(nodes) {
+    const tableBody = document.querySelector("#nodes-table tbody");
+    tableBody.innerHTML = ""; // Clear
+
+    nodes.forEach((node) => {
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${node.id}</td>
+        <td>${node.user_name}</td>
+        <td>${node.ipv4}</td>
+        <td>${node.hostname}</td>
+        <td>${node.given_name}</td>
+        <td>
+          <button onclick="showEditNodeModal(${node.id})">Edit</button>
+          <button onclick="confirmDeleteNode(${node.id})" style="margin-left: 5px;">Delete</button>
+        </td>
+      `;
+      tableBody.appendChild(row);
+    });
+  }
+
+  function filterAndSortNodes() {
+    const searchTerm = document.querySelector("#search-box").value.toLowerCase();
+    const filterBy = document.querySelector("#filter-by").value;
+    const sortOrder = document.querySelector("#sort-order").value;
+
+    let filteredNodes = nodesData.filter((node) => {
+      const value = node[filterBy]?.toString().toLowerCase() || "";
+      return value.includes(searchTerm);
+    });
+
+    filteredNodes.sort((a, b) => {
+      const aValue = (a[filterBy] || "").toString().toLowerCase();
+      const bValue = (b[filterBy] || "").toString().toLowerCase();
+      if (sortOrder === "asc") {
+        return aValue > bValue ? 1 : aValue < bValue ? -1 : 0;
+      } else {
+        return aValue < bValue ? 1 : aValue > bValue ? -1 : 0;
+      }
+    });
+
+    displayNodes(filteredNodes);
+  }
+
+  // Show the edit node modal
+  function showEditNodeModal(nodeId) {
+    const node = nodesData.find((n) => n.id === nodeId);
+    if (!node) {
+      alert("Node not found.");
+      return;
+    }
+    document.getElementById("edit-node-id").value = node.id;
+    document.getElementById("edit-node-user-name").value = node.user_name;
+    document.getElementById("edit-node-ipv4").value = node.ipv4;
+    document.getElementById("edit-node-hostname").value = node.hostname;
+    document.getElementById("edit-node-given-name").value = node.given_name;
+    document.getElementById("edit-node-modal").style.display = "block";
+  }
+
+  function closeEditNodeModal() {
+    document.getElementById("edit-node-modal").style.display = "none";
+    document.getElementById("edit-node-id").value = "";
+    document.getElementById("edit-node-user-name").value = "";
+    document.getElementById("edit-node-ipv4").value = "";
+    document.getElementById("edit-node-hostname").value = "";
+    document.getElementById("edit-node-given-name").value = "";
+  }
+
+  async function updateNode() {
+    const nodeId = document.getElementById("edit-node-id").value;
+    const userName = document.getElementById("edit-node-user-name").value.trim();
+    const ipv4 = document.getElementById("edit-node-ipv4").value.trim();
+    const hostname = document.getElementById("edit-node-hostname").value.trim();
+    const givenName = document.getElementById("edit-node-given-name").value.trim();
+
+    if (!userName || !ipv4 || !hostname) {
+      alert("User Name, IPv4, and Hostname are required!");
+      return;
+    }
+
+    const payload = {
+      user_name: userName,
+      ipv4: ipv4,
+      hostname: hostname,
+      given_name: givenName
+    };
+
+    try {
+      const response = await authFetch(`${API_BASE_URL}/nodes/${nodeId}`, {
+        method: "PUT",
+        body: JSON.stringify(payload)
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to update node");
+      }
+      alert("Node updated successfully!");
+      closeEditNodeModal();
+      fetchNodes();
+    } catch (error) {
+      console.error("Error updating node:", error);
+      alert(`Failed to update node. ${error.message}`);
+    }
+  }
+
+  // Create Node Modal (Optional)
+  function showCreateNodeModal() {
+    document.getElementById("create-node-modal").style.display = "block";
+  }
+  function closeCreateNodeModal() {
+    document.getElementById("create-node-modal").style.display = "none";
+    document.getElementById("create-node-user-name").value = "";
+    document.getElementById("create-node-ipv4").value = "";
+    document.getElementById("create-node-hostname").value = "";
+    document.getElementById("create-node-given-name").value = "";
+  }
+
+  async function createNode() {
+    const userName = document.getElementById("create-node-user-name").value.trim();
+    const ipv4 = document.getElementById("create-node-ipv4").value.trim();
+    const hostname = document.getElementById("create-node-hostname").value.trim();
+    const givenName = document.getElementById("create-node-given-name").value.trim();
+
+    if (!userName || !ipv4 || !hostname) {
+      alert("User Name, IPv4, and Hostname are required!");
+      return;
+    }
+
+    const payload = {
+      user_name: userName,
+      ipv4: ipv4,
+      hostname: hostname,
+      given_name: givenName
+    };
+
+    try {
+      const response = await authFetch(`${API_BASE_URL}/nodes`, {
+        method: "POST",
+        body: JSON.stringify(payload)
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to create node");
+      }
+      alert("Node created successfully!");
+      closeCreateNodeModal();
+      fetchNodes();
+    } catch (error) {
+      console.error("Error creating node:", error);
+      alert(`Failed to create node. ${error.message}`);
+    }
+  }
+
+  function confirmDeleteNode(nodeId) {
+    const node = nodesData.find((n) => n.id === nodeId);
+    if (!node) {
+      alert("Node not found.");
+      return;
+    }
+    const confirmation = confirm(
+      `Are you sure you want to delete the node "${node.hostname}" (ID: ${node.id})?`
+    );
+    if (confirmation) {
+      deleteNode(nodeId);
+    }
+  }
+
+  async function deleteNode(nodeId) {
+    try {
+      const response = await authFetch(`${API_BASE_URL}/nodes/${nodeId}`, {
+        method: "DELETE"
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to delete node");
+      }
+      alert("Node deleted successfully!");
+      fetchNodes();
+    } catch (error) {
+      console.error("Error deleting node:", error);
+      alert(`Failed to delete node. ${error.message}`);
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    fetchNodes();
+  });
+</script>
+
+
 <!-- Filter Options -->
 <div style="margin-bottom: 10px">
   <label for="filter-by" style="margin-right: 10px">Filter By:</label>
@@ -41,9 +256,7 @@
       <th>Actions</th>
     </tr>
   </thead>
-  <tbody>
-    <!-- Data will be populated here dynamically -->
-  </tbody>
+  <tbody></tbody>
 </table>
 
 <!-- Edit Node Modal -->
@@ -62,26 +275,22 @@
   <input type="hidden" id="edit-node-id" />
 
   <label for="edit-node-user-name">User Name:</label>
-  <input type="text" id="edit-node-user-name" placeholder="Enter user name"
-    style="margin-bottom: 10px; width: 100%; padding: 10px" />
+  <input type="text" id="edit-node-user-name" style="margin-bottom: 10px; width: 100%; padding: 10px" />
 
   <label for="edit-node-ipv4">IPv4:</label>
-  <input type="text" id="edit-node-ipv4" placeholder="Enter IPv4 address"
-    style="margin-bottom: 10px; width: 100%; padding: 10px" />
+  <input type="text" id="edit-node-ipv4" style="margin-bottom: 10px; width: 100%; padding: 10px" />
 
   <label for="edit-node-hostname">Hostname:</label>
-  <input type="text" id="edit-node-hostname" placeholder="Enter hostname"
-    style="margin-bottom: 10px; width: 100%; padding: 10px" />
+  <input type="text" id="edit-node-hostname" style="margin-bottom: 10px; width: 100%; padding: 10px" />
 
   <label for="edit-node-given-name">Given Name:</label>
-  <input type="text" id="edit-node-given-name" placeholder="Enter given name"
-    style="margin-bottom: 10px; width: 100%; padding: 10px" />
+  <input type="text" id="edit-node-given-name" style="margin-bottom: 10px; width: 100%; padding: 10px" />
 
   <button onclick="updateNode()">Save Changes</button>
   <button onclick="closeEditNodeModal()">Cancel</button>
 </div>
 
-<!-- Create Node Modal (Optional) -->
+<!-- Create Node Modal -->
 <div id="create-node-modal" style="
     display: none;
     position: fixed;
@@ -96,266 +305,19 @@
   <h3>Create Node</h3>
 
   <label for="create-node-user-name">User Name:</label>
-  <input type="text" id="create-node-user-name" placeholder="Enter user name"
-    style="margin-bottom: 10px; width: 100%; padding: 10px" />
+  <input type="text" id="create-node-user-name" style="margin-bottom: 10px; width: 100%; padding: 10px" />
 
   <label for="create-node-ipv4">IPv4:</label>
-  <input type="text" id="create-node-ipv4" placeholder="Enter IPv4 address"
-    style="margin-bottom: 10px; width: 100%; padding: 10px" />
+  <input type="text" id="create-node-ipv4" style="margin-bottom: 10px; width: 100%; padding: 10px" />
 
   <label for="create-node-hostname">Hostname:</label>
-  <input type="text" id="create-node-hostname" placeholder="Enter hostname"
-    style="margin-bottom: 10px; width: 100%; padding: 10px" />
+  <input type="text" id="create-node-hostname" style="margin-bottom: 10px; width: 100%; padding: 10px" />
 
   <label for="create-node-given-name">Given Name:</label>
-  <input type="text" id="create-node-given-name" placeholder="Enter given name"
-    style="margin-bottom: 10px; width: 100%; padding: 10px" />
+  <input type="text" id="create-node-given-name" style="margin-bottom: 10px; width: 100%; padding: 10px" />
 
   <button onclick="createNode()">Create Node</button>
   <button onclick="closeCreateNodeModal()">Cancel</button>
 </div>
 
-<script>
-  let nodesData = []; // Store nodes data for searching and sorting
-
-  // Fetch data from the API and populate the table
-  async function fetchNodes() {
-    try {
-      const response = await fetch(`${API_BASE_URL}/nodes`); // Use the base URL
-      if (!response.ok) {
-        throw new Error("Failed to fetch data");
-      }
-
-      nodesData = await response.json(); // Store data for filtering and sorting
-      filterAndSortNodes(); // Display initial data
-    } catch (error) {
-      console.error("Error fetching nodes:", error);
-      alert("Failed to load nodes. Please try again later.");
-    }
-  }
-
-  // Display nodes in the table
-  function displayNodes(nodes) {
-    const tableBody = document.querySelector("#nodes-table tbody");
-    tableBody.innerHTML = ""; // Clear the table
-
-    nodes.forEach((node) => {
-      const row = document.createElement("tr");
-      row.innerHTML = `
-        <td>${node.id}</td>
-        <td>${node.user_name}</td>
-        <td>${node.ipv4}</td>
-        <td>${node.hostname}</td>
-        <td>${node.given_name}</td>
-        <td>
-          <button onclick="showEditNodeModal(${node.id})">Edit</button>
-          <button onclick="confirmDeleteNode(${node.id})" style="margin-left: 5px;">Delete</button>
-        </td>
-      `;
-      tableBody.appendChild(row);
-    });
-  }
-
-  // Filter and sort nodes
-  function filterAndSortNodes() {
-    const searchTerm = document.querySelector("#search-box").value.toLowerCase();
-    const filterBy = document.querySelector("#filter-by").value; // Selected field
-    const sortOrder = document.querySelector("#sort-order").value; // Ascending or descending
-
-    let filteredNodes = nodesData.filter((node) => {
-      const value = node[filterBy]?.toString().toLowerCase() || ""; // Safely access the field
-      return value.includes(searchTerm);
-    });
-
-    // Sort the filtered nodes
-    filteredNodes = filteredNodes.sort((a, b) => {
-      const aValue = a[filterBy]?.toString().toLowerCase() || "";
-      const bValue = b[filterBy]?.toString().toLowerCase() || "";
-
-      if (sortOrder === "asc") {
-        return aValue > bValue ? 1 : aValue < bValue ? -1 : 0;
-      } else {
-        return aValue < bValue ? 1 : aValue > bValue ? -1 : 0;
-      }
-    });
-
-    displayNodes(filteredNodes); // Display filtered and sorted nodes
-  }
-
-  // Show the edit node modal and populate it with the node's current data
-  function showEditNodeModal(nodeId) {
-    // Find the node data
-    const node = nodesData.find((n) => n.id === nodeId);
-    if (!node) {
-      alert("Node not found.");
-      return;
-    }
-
-    // Populate the modal fields with current node data
-    document.getElementById("edit-node-id").value = node.id;
-    document.getElementById("edit-node-user-name").value = node.user_name;
-    document.getElementById("edit-node-ipv4").value = node.ipv4;
-    document.getElementById("edit-node-hostname").value = node.hostname;
-    document.getElementById("edit-node-given-name").value = node.given_name;
-
-    // Show the modal
-    document.getElementById("edit-node-modal").style.display = "block";
-  }
-
-  // Close the edit node modal
-  function closeEditNodeModal() {
-    document.getElementById("edit-node-modal").style.display = "none";
-    // Clear the input fields
-    document.getElementById("edit-node-id").value = "";
-    document.getElementById("edit-node-user-name").value = "";
-    document.getElementById("edit-node-ipv4").value = "";
-    document.getElementById("edit-node-hostname").value = "";
-    document.getElementById("edit-node-given-name").value = "";
-  }
-
-  // Update the node with the edited data
-  async function updateNode() {
-    const nodeId = document.getElementById("edit-node-id").value;
-    const userName = document.getElementById("edit-node-user-name").value.trim();
-    const ipv4 = document.getElementById("edit-node-ipv4").value.trim();
-    const hostname = document.getElementById("edit-node-hostname").value.trim();
-    const givenName = document.getElementById("edit-node-given-name").value.trim();
-
-    if (!userName || !ipv4 || !hostname) {
-      alert("User Name, IPv4, and Hostname are required!");
-      return;
-    }
-
-    // Prepare the payload
-    const payload = {
-      user_name: userName,
-      ipv4: ipv4,
-      hostname: hostname,
-      given_name: givenName,
-    };
-
-    try {
-      const response = await fetch(`${API_BASE_URL}/nodes/${nodeId}`, {
-        method: "PUT", // Assuming PUT is used for full updates; use PATCH if partial
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to update node");
-      }
-
-      alert("Node updated successfully!");
-      closeEditNodeModal();
-      fetchNodes(); // Refresh the nodes list
-    } catch (error) {
-      console.error("Error updating node:", error);
-      alert(`Failed to update node. ${error.message}`);
-    }
-  }
-
-  // Optional: Show the create node modal
-  function showCreateNodeModal() {
-    document.getElementById("create-node-modal").style.display = "block";
-  }
-
-  // Optional: Close the create node modal
-  function closeCreateNodeModal() {
-    document.getElementById("create-node-modal").style.display = "none";
-    // Clear the input fields
-    document.getElementById("create-node-user-name").value = "";
-    document.getElementById("create-node-ipv4").value = "";
-    document.getElementById("create-node-hostname").value = "";
-    document.getElementById("create-node-given-name").value = "";
-  }
-
-  // Optional: Create a new node
-  async function createNode() {
-    const userName = document.getElementById("create-node-user-name").value.trim();
-    const ipv4 = document.getElementById("create-node-ipv4").value.trim();
-    const hostname = document.getElementById("create-node-hostname").value.trim();
-    const givenName = document.getElementById("create-node-given-name").value.trim();
-
-    if (!userName || !ipv4 || !hostname) {
-      alert("User Name, IPv4, and Hostname are required!");
-      return;
-    }
-
-    // Prepare the payload
-    const payload = {
-      user_name: userName,
-      ipv4: ipv4,
-      hostname: hostname,
-      given_name: givenName,
-    };
-
-    try {
-      const response = await fetch(`${API_BASE_URL}/nodes`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to create node");
-      }
-
-      alert("Node created successfully!");
-      closeCreateNodeModal();
-      fetchNodes(); // Refresh the nodes list
-    } catch (error) {
-      console.error("Error creating node:", error);
-      alert(`Failed to create node. ${error.message}`);
-    }
-  }
-
-  // Confirm deletion of a node
-  function confirmDeleteNode(nodeId) {
-    // Optionally, you can fetch node details to show more info in the confirmation
-    const node = nodesData.find((n) => n.id === nodeId);
-    if (!node) {
-      alert("Node not found.");
-      return;
-    }
-
-    const confirmation = confirm(
-      `Are you sure you want to delete the node "${node.hostname}" (ID: ${node.id})? This action cannot be undone.`
-    );
-
-    if (confirmation) {
-      deleteNode(nodeId);
-    }
-  }
-
-  // Delete a node
-  async function deleteNode(nodeId) {
-    try {
-      const response = await fetch(`${API_BASE_URL}/nodes/${nodeId}`, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to delete node");
-      }
-
-      alert("Node deleted successfully!");
-      fetchNodes(); // Refresh the nodes list
-    } catch (error) {
-      console.error("Error deleting node:", error);
-      alert(`Failed to delete node. ${error.message}`);
-    }
-  }
-
-  // Fetch and display nodes on page load
-  document.addEventListener("DOMContentLoaded", () => {
-    fetchNodes();
-  });
-</script>
 {% endblock %}
