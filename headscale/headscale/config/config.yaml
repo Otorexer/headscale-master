@@ -10,7 +10,7 @@
 #
 # https://myheadscale.example.com:443
 #
-server_url: https://h.otmatas.com
+server_url: https://127.0.0.1:8080
 
 # Address to listen to / bind to on the server
 #
@@ -278,9 +278,7 @@ dns:
   nameservers:
     global:
       - 1.1.1.1
-      - 1.0.0.1
-      - 2606:4700:4700::1111
-      - 2606:4700:4700::1001
+      - 8.8.8.8
 
       # NextDNS (see https://tailscale.com/kb/1218/nextdns/).
       # "abc123" is example NextDNS ID, replace with yours.
