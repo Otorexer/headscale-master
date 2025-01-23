@@ -21,6 +21,8 @@ services:
     environment:
       - FLASK_ENV=development
       - HEADSCALE_CONTAINER_NAME=headscale
+      - DEFAULT_USER_NAME=admin123
+      - DEFAULT_USER_PASSWORD=admin
 
   headscale-master-web:
     build: ./headscale/web

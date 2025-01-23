@@ -4,6 +4,7 @@ import jwt
 import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 import uuid
+import os  # Import os to access environment variables
 
 from users.users import users_bp
 from users.keys import user_keys_bp
@@ -14,6 +15,8 @@ from commands.commands import commands_bp
 from db import get_db_connection, ensure_web_users_table  # Import ensure_web_users_table
 from auth import token_required  # Import the decorator from auth.py
 
+import sqlite3  # Ensure sqlite3 is imported
+
 app = Flask(__name__)
 
 # Enable CORS for all routes and origins
@@ -23,11 +26,39 @@ CORS(app)
 app.config['SECRET_KEY'] = 'Th1s1ss3cr3t'  # Change this to a more secure key in production
 app.config['JWT_EXPIRATION_DELTA'] = datetime.timedelta(minutes=30)
 
-# Initialize the web_users table once when the app starts
+# Initialize the web_users table and ensure default user once when the app starts
 with app.app_context():
     conn = get_db_connection()
-    ensure_web_users_table(conn)
-    conn.close()
+    try:
+        ensure_web_users_table(conn)
+        
+        # Retrieve default user credentials from environment variables
+        default_user_name = os.getenv('DEFAULT_USER_NAME')
+        default_user_password = os.getenv('DEFAULT_USER_PASSWORD')
+
+        if default_user_name and default_user_password:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM web_users WHERE name = ?", (default_user_name,))
+            user = cursor.fetchone()
+            
+            if not user:
+                # Create default user
+                hashed_password = generate_password_hash(default_user_password, method='pbkdf2:sha256')
+                public_id = str(uuid.uuid4())
+                cursor.execute(
+                    "INSERT INTO web_users (public_id, name, password, admin) VALUES (?, ?, ?, ?)",
+                    (public_id, default_user_name, hashed_password, True)  # Set admin=True for the default user
+                )
+                conn.commit()
+                print(f"Default user '{default_user_name}' created.")
+            else:
+                print(f"Default user '{default_user_name}' already exists.")
+        else:
+            print("Default user credentials not set in environment variables.")
+    except Exception as e:
+        print(f"Error ensuring default user: {e}")
+    finally:
+        conn.close()
 
 # Register the Blueprints
 app.register_blueprint(users_bp)
@@ -54,8 +85,10 @@ def signup_user():
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("INSERT INTO web_users (public_id, name, password, admin) VALUES (?, ?, ?, ?)",
-                       (public_id, name, hashed_password, False))
+        cursor.execute(
+            "INSERT INTO web_users (public_id, name, password, admin) VALUES (?, ?, ?, ?)",
+            (public_id, name, hashed_password, False)
+        )
         conn.commit()
         conn.close()
         return jsonify({'message': 'Registered successfully'}), 201
