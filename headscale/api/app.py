@@ -11,7 +11,7 @@ from nodes.nodes import nodes_bp
 from pre_auth_keys.pre_auth_keys import pre_auth_keys_bp
 from resources.resources import resources_bp
 from commands.commands import commands_bp
-from db import get_db_connection
+from db import get_db_connection, ensure_web_users_table  # Import ensure_web_users_table
 from auth import token_required  # Import the decorator from auth.py
 
 app = Flask(__name__)
@@ -22,6 +22,12 @@ CORS(app)
 # Configuration
 app.config['SECRET_KEY'] = 'Th1s1ss3cr3t'  # Change this to a more secure key in production
 app.config['JWT_EXPIRATION_DELTA'] = datetime.timedelta(minutes=30)
+
+# Initialize the web_users table once when the app starts
+with app.app_context():
+    conn = get_db_connection()
+    ensure_web_users_table(conn)
+    conn.close()
 
 # Register the Blueprints
 app.register_blueprint(users_bp)

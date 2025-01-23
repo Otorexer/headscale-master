@@ -37,9 +37,7 @@ def get_db_connection():
 
         print(f"wal_autocheckpoint set to {current_autocheckpoint} successfully.")
 
-        # Ensure 'web_users' table exists
-        ensure_web_users_table(conn)
-
+        # Removed the ensure_web_users_table call here
         return conn
 
     except sqlite3.Error as e:
