@@ -85,7 +85,8 @@ app.register_blueprint(commands_bp)
 
 # Registration Route
 @app.route('/register', methods=['POST'])
-def signup_user():
+@token_required
+def signup_user(current_user):
     data = request.get_json()
 
     if not data or not data.get('name') or not data.get('password'):
