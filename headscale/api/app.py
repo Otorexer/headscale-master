@@ -1,3 +1,4 @@
+# headscale/api/app.py
 from flask import Flask, request, jsonify, make_response
 from flask_cors import CORS
 import jwt
@@ -16,6 +17,7 @@ from resources.resources import resources_bp
 from commands.commands import commands_bp
 from db import get_db_connection, ensure_web_users_table  # Import ensure_web_users_table
 from auth import token_required  # Import the decorator from auth.py
+from web_users.web_users import web_users_bp # Import the new Blueprint
 
 import sqlite3  # Ensure sqlite3 is imported
 
@@ -82,6 +84,7 @@ app.register_blueprint(nodes_bp)
 app.register_blueprint(pre_auth_keys_bp)
 app.register_blueprint(resources_bp)
 app.register_blueprint(commands_bp)
+app.register_blueprint(web_users_bp) # Register the new Blueprint
 
 # Registration Route
 @app.route('/register', methods=['POST'])
