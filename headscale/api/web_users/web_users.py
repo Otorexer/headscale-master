@@ -89,3 +89,18 @@ def get_web_users(current_user):
             'admin': bool(user['admin'])  # Convert int to bool
         })
     return jsonify(users_list)
+
+@web_users_bp.route('/current_user', methods=['GET'])
+@token_required
+def get_current_user(current_user):
+    """
+    Retrieve information about the currently logged-in user.
+    """
+    user_info = {
+        'id': current_user['id'],
+        'public_id': current_user['public_id'],
+        'name': current_user['name'],
+        'admin': bool(current_user['admin'])
+        # Add more fields if necessary
+    }
+    return jsonify({'current_user': user_info}), 200
