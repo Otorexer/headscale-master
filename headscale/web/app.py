@@ -62,9 +62,9 @@ def pre_auth_keys():
     return render_template("pre_auth_keys/pre_auth_keys.html")
 
 
-@app.route('/register')
+@app.route('/register_node')
 def register():
-    return render_template('register/register.html')
+    return render_template('register_node/register_node.html')
 
 
 @app.route('/deploy')
