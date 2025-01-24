@@ -4,7 +4,9 @@ import jwt
 import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 import uuid
-import os  # Import os to access environment variables
+import os
+import time
+
 
 from users.users import users_bp
 from users.keys import user_keys_bp
@@ -27,8 +29,20 @@ app.config['SECRET_KEY'] = 'Th1s1ss3cr3t'  # Change this to a more secure key in
 app.config['JWT_EXPIRATION_DELTA'] = datetime.timedelta(minutes=30)
 
 # Initialize the web_users table and ensure default user once when the app starts
+# Initialize the web_users table and ensure default user once when the app starts
 with app.app_context():
-    conn = get_db_connection()
+    conn = None
+    while True:
+        try:
+            conn = get_db_connection()
+            break  # Exit the loop if connection is successful
+        except FileNotFoundError as e:
+            print(f"Database not found: {e}. Retrying in 5 seconds...")
+            time.sleep(5)
+        except Exception as e:
+            print(f"Error connecting to database: {e}. Retrying in 5 seconds...")
+            time.sleep(5)
+    
     try:
         ensure_web_users_table(conn)
         
@@ -58,7 +72,8 @@ with app.app_context():
     except Exception as e:
         print(f"Error ensuring default user: {e}")
     finally:
-        conn.close()
+        if conn:
+            conn.close()
 
 # Register the Blueprints
 app.register_blueprint(users_bp)

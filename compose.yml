@@ -3,7 +3,7 @@ services:
     image: "headscale/headscale"
     container_name: "headscale"
     command: serve
-    restart: unless-stopped
+    restart: no
     volumes:
       - ./headscale/headscale/data:/var/lib/headscale
       - ./headscale/headscale/config:/etc/headscale
@@ -11,7 +11,7 @@ services:
   headscale-master-api:
     build: ./headscale/api
     container_name: "headscale-master-api"
-    restart: unless-stopped
+    restart: no
     volumes:
       - ./headscale/headscale/data:/var/lib/headscale
       - ./headscale/headscale/config:/etc/headscale
@@ -27,7 +27,7 @@ services:
   headscale-master-web:
     build: ./headscale/web
     container_name: "headscale-master-web"
-    restart: unless-stopped
+    restart: no
     volumes:
       - ./headscale/headscale/data:/var/lib/headscale
       - ./headscale/headscale/config:/etc/headscale
