@@ -1,13 +1,8 @@
 # headscale/api/app.py
-from flask import Flask, request, jsonify, make_response
+from flask import Flask
 from flask_cors import CORS
-import jwt
-import datetime
-from werkzeug.security import generate_password_hash, check_password_hash
-import uuid
 import os
 import time
-
 
 from users.users import users_bp
 from users.keys import user_keys_bp
@@ -15,11 +10,11 @@ from nodes.nodes import nodes_bp
 from pre_auth_keys.pre_auth_keys import pre_auth_keys_bp
 from resources.resources import resources_bp
 from commands.commands import commands_bp
-from db import get_db_connection, ensure_web_users_table  # Import ensure_web_users_table
-from auth import token_required  # Import the decorator from auth.py
-from web_users.web_users import web_users_bp # Import the new Blueprint
+from db import get_db_connection, ensure_web_users_table
+from auth import token_required
+from web_users.web_users import web_users_bp  # Import the new Blueprint
 
-import sqlite3  # Ensure sqlite3 is imported
+import sqlite3
 
 app = Flask(__name__)
 
@@ -28,9 +23,8 @@ CORS(app)
 
 # Configuration
 app.config['SECRET_KEY'] = 'Th1s1ss3cr3t'  # Change this to a more secure key in production
-app.config['JWT_EXPIRATION_DELTA'] = datetime.timedelta(minutes=30)
+app.config['JWT_EXPIRATION_DELTA'] = 30  # JWT expiration in minutes
 
-# Initialize the web_users table and ensure default user once when the app starts
 # Initialize the web_users table and ensure default user once when the app starts
 with app.app_context():
     conn = None
@@ -84,67 +78,9 @@ app.register_blueprint(nodes_bp)
 app.register_blueprint(pre_auth_keys_bp)
 app.register_blueprint(resources_bp)
 app.register_blueprint(commands_bp)
-app.register_blueprint(web_users_bp) # Register the new Blueprint
+app.register_blueprint(web_users_bp)  # Register the new Blueprint
 
-# Registration Route
-@app.route('/register', methods=['POST'])
-@token_required
-def signup_user(current_user):
-    data = request.get_json()
-
-    if not data or not data.get('name') or not data.get('password'):
-        return jsonify({'message': 'Name and password are required'}), 400
-
-    name = data['name']
-    password = data['password']
-
-    hashed_password = generate_password_hash(password, method='pbkdf2:sha256')
-    public_id = str(uuid.uuid4())
-
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute(
-            "INSERT INTO web_users (public_id, name, password, admin) VALUES (?, ?, ?, ?)",
-            (public_id, name, hashed_password, False)
-        )
-        conn.commit()
-        conn.close()
-        return jsonify({'message': 'Registered successfully'}), 201
-    except sqlite3.IntegrityError:
-        return jsonify({'message': 'User already exists'}), 409
-    except Exception as e:
-        return jsonify({'message': 'Registration failed', 'error': str(e)}), 500
-
-# Login Route
-@app.route('/login', methods=['POST'])
-def login_user():
-    auth = request.authorization
-
-    if not auth or not auth.username or not auth.password:
-        return make_response('Could not verify', 401, {'WWW-Authenticate': 'Basic realm="Login required!"'})
-
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM web_users WHERE name = ?", (auth.username,))
-        user = cursor.fetchone()
-        conn.close()
-
-        if not user:
-            return make_response('Could not verify',  401, {'WWW-Authenticate': 'Basic realm="Login required!"'})
-
-        if check_password_hash(user['password'], auth.password):
-            token = jwt.encode({
-                'public_id': user['public_id'],
-                'exp' : datetime.datetime.utcnow() + app.config['JWT_EXPIRATION_DELTA']
-            }, app.config['SECRET_KEY'], algorithm="HS256")
-
-            return jsonify({'token' : token})
-
-        return make_response('Could not verify',  401, {'WWW-Authenticate': 'Basic realm="Login required!"'})
-    except Exception as e:
-        return jsonify({'message': 'Login failed', 'error': str(e)}), 500
+# Removed the /login and /register route definitions from here
 
 # Example of a Protected Route
 @app.route('/protected', methods=['GET'])
