@@ -12,7 +12,6 @@ from auth import token_required
 
 web_users_bp = Blueprint('web_users', __name__)
 
-# Registration Route
 @web_users_bp.route('/register', methods=['POST'])
 @token_required
 def signup_user(current_user):
@@ -42,7 +41,6 @@ def signup_user(current_user):
     except Exception as e:
         return jsonify({'message': 'Registration failed', 'error': str(e)}), 500
 
-# Login Route
 @web_users_bp.route('/login', methods=['POST'])
 def login_user():
     auth = request.authorization
@@ -72,7 +70,6 @@ def login_user():
     except Exception as e:
         return jsonify({'message': 'Login failed', 'error': str(e)}), 500
 
-# Existing /web_users route
 @web_users_bp.route('/web_users', methods=['GET'])
 @token_required
 def get_web_users(current_user):

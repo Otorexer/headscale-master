@@ -12,7 +12,7 @@ from resources.resources import resources_bp
 from commands.commands import commands_bp
 from db import get_db_connection, ensure_web_users_table
 from auth import token_required
-from web_users.web_users import web_users_bp  # Import the new Blueprint
+from web_users.web_users import web_users_bp
 
 import sqlite3
 
@@ -79,14 +79,6 @@ app.register_blueprint(pre_auth_keys_bp)
 app.register_blueprint(resources_bp)
 app.register_blueprint(commands_bp)
 app.register_blueprint(web_users_bp)  # Register the new Blueprint
-
-# Removed the /login and /register route definitions from here
-
-# Example of a Protected Route
-@app.route('/protected', methods=['GET'])
-@token_required
-def protected_route(current_user):
-    return jsonify({'message': f'Hello, {current_user["name"]}! This is a protected route.'})
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
