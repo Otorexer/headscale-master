@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Register User{% endblock %}
+{% block content %}
+<h2>Register New User</h2>
+
+<script>
+    if (!localStorage.getItem('token')) {
+        window.location.href = '/login';
+    }
+
+    async function registerUser(ev) {
+        ev.preventDefault();
+        const name = document.getElementById('name').value.trim();
+        const password = document.getElementById('password').value.trim();
+        const resultDiv = document.getElementById('result');
+
+        if (!name || !password) {
+            resultDiv.textContent = 'Name and password are required!';
+            resultDiv.style.color = 'red';
+            return;
+        }
+
+        try {
+            const response = await authFetch(`${API_BASE_URL}/register`, {
+                method: 'POST',
+                body: JSON.stringify({ name, password })
+            });
+            const data = await response.json();
+            if (response.ok) {
+                resultDiv.textContent = 'User registered successfully!';
+                resultDiv.style.color = 'green';
+                document.getElementById('name').value = '';
+                document.getElementById('password').value = '';
+            } else {
+                resultDiv.textContent = 'Error: ' + (data.message || 'Registration failed');
+                resultDiv.style.color = 'red';
+            }
+        } catch (error) {
+            resultDiv.textContent = 'Error: ' + error.message;
+            resultDiv.style.color = 'red';
+        }
+    }
+</script>
+
+<form id="registerForm" onsubmit="registerUser(event)">
+    <div>
+        <label for="name">Username:</label>
+        <input type="text" id="name" required>
+    </div>
+    <div>
+        <label for="password">Password:</label>
+        <input type="password" id="password" required>
+    </div>
+    <button type="submit">Register</button>
+</form>
+<div id="result" style="margin-top: 10px;"></div>
+{% endblock %}
