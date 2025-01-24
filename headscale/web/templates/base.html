@@ -138,6 +138,14 @@
     .counter {
       font-size: 0.9em;
       color: white;
+      margin-right: 20px;
+      /* Add some spacing between counter and user info */
+    }
+
+    /* New CSS for Current User Info */
+    .current-user {
+      font-size: 0.9em;
+      color: white;
     }
 
     /* Disable animation on page load */
@@ -153,7 +161,10 @@
       <button class="menu-toggle" onclick="toggleMenu()">☰</button>
       <h1><a href="/">HeadscaleGUI</a></h1>
     </div>
+    <!-- Existing Counter Div -->
     <div class="counter" id="counter">Loading...</div>
+    <!-- New Current User Div -->
+    <div class="current-user" id="current-user">Loading user...</div>
   </header>
 
   <div class="container">
@@ -181,26 +192,25 @@
     const mainContent = document.getElementById("main-content");
     const toggleButton = document.querySelector(".menu-toggle");
     const counterElement = document.getElementById("counter");
+    const currentUserElement = document.getElementById("current-user");
     const body = document.body;
 
     /**
-     * Only call the protected API if:
-     *   - we have a token
-     *   - AND we are not currently on /login
+     * Fetch and update the resource counters (Users and Nodes)
      */
     async function updateCounter() {
       const token = localStorage.getItem('token');
       if (!token) {
-        // If no token, do NOT fetch anything. Just show something else.
         counterElement.textContent = "Not logged in";
         return;
       }
+
       // If we *are* on /login, skip calling the summary endpoint to avoid 401 loops.
       if (window.location.pathname === '/login') {
         counterElement.textContent = "Login page";
         return;
       }
-      // Otherwise, do the normal fetch
+
       try {
         const response = await authFetch(`${API_BASE_URL}/resources/summary`);
         if (!response.ok) {
@@ -214,8 +224,39 @@
       }
     }
 
+    /**
+     * Fetch and display the current user's information
+     */
+    async function fetchCurrentUser() {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        currentUserElement.textContent = "Not logged in";
+        return;
+      }
+
+      // If we *are* on /login, skip calling the current_user endpoint to avoid 401 loops.
+      if (window.location.pathname === '/login') {
+        currentUserElement.textContent = "Login page";
+        return;
+      }
+
+      try {
+        const response = await authFetch(`${API_BASE_URL}/current_user`);
+        if (!response.ok) {
+          throw new Error("Failed to fetch current user");
+        }
+        const data = await response.json();
+        const user = data.current_user;
+        currentUserElement.textContent = `Logged in as: ${user.name} ${user.admin ? "(Admin)" : ""}`;
+      } catch (error) {
+        console.error("Error fetching current user:", error);
+        currentUserElement.textContent = "Error loading user info";
+      }
+    }
+
     document.addEventListener("DOMContentLoaded", () => {
       updateCounter();
+      fetchCurrentUser();
 
       const savedState = sessionStorage.getItem("menuState");
       if (savedState === "open") {
@@ -240,9 +281,11 @@
         document.removeEventListener("click", closeMenuOnOutsideClick);
       }
     }
+
     function persistMenuState() {
       sessionStorage.setItem("menuState", "open");
     }
+
     function closeMenuOnOutsideClick(event) {
       const isClickInside =
         sidebar.contains(event.target) || toggleButton.contains(event.target);
