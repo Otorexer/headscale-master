@@ -20,9 +20,9 @@ def get_nodes(current_user):
     """Fetch all nodes, including the user name."""
     conn = get_db_connection()
     nodes = conn.execute('''
-        SELECT nodes.*, web_users.name AS user_name
+        SELECT nodes.*, users.name AS user_name
         FROM nodes
-        LEFT JOIN web_users ON nodes.user_id = web_users.id
+        LEFT JOIN users ON nodes.user_id = users.id
         WHERE nodes.deleted_at IS NULL
     ''').fetchall()
     conn.close()
