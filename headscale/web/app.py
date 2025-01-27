@@ -80,5 +80,9 @@ def login():
 def register_user():
     return render_template('register_user/register_user.html')
 
+@app.route('/web_users') # New route
+def web_users():
+    return render_template('web_users/web_users.html')
+
 if __name__ == "__main__":
     app.run(debug=True, host='0.0.0.0', port=8080)

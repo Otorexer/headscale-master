@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Web Users{% endblock %}
+{% block content %}
+<h2>Web Users List</h2>
+
+<script>
+    if (!localStorage.getItem('token')) {
+        window.location.href = '/login';
+    }
+
+    let webUsersData = [];
+
+    async function fetchWebUsers() {
+        try {
+            const response = await authFetch(`${API_BASE_URL}/web_users`);
+            if (!response.ok) {
+                throw new Error("Failed to fetch web users");
+            }
+            webUsersData = await response.json();
+            displayWebUsers(webUsersData);
+        } catch (error) {
+            console.error("Error fetching web users:", error);
+            alert("Not authorized or error fetching web users.");
+        }
+    }
+
+    function displayWebUsers(users) {
+        const tableBody = document.querySelector("#web-users-table tbody");
+        tableBody.innerHTML = "";
+        users.forEach(user => {
+            const row = document.createElement("tr");
+            row.innerHTML = `
+                <td>${user.name}</td>
+                <td>${user.admin ? 'Yes' : 'No'}</td>
+            `;
+            tableBody.appendChild(row);
+        });
+    }
+
+
+    document.addEventListener("DOMContentLoaded", () => {
+        fetchWebUsers();
+    });
+</script>
+
+<table id="web-users-table" border="1" style="width: 100%; text-align: left">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Admin</th>
+        </tr>
+    </thead>
+    <tbody></tbody>
+</table>
+
+{% endblock %}
