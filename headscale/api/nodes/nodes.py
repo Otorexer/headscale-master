@@ -39,31 +39,6 @@ def get_node(current_user, node_id):
         return jsonify({'error': 'Node not found'}), 404
     return jsonify(dict(node))
 
-@nodes_bp.route('/nodes', methods=['POST'])
-@token_required
-def create_node(current_user):
-    """Create a new node."""
-    data = request.json
-    machine_key = data.get('machine_key')
-    node_key = data.get('node_key')
-    user_id = current_user['id']
-    created_at = datetime.utcnow()
-
-    if not machine_key or not node_key:
-        return jsonify({'error': 'machine_key and node_key are required'}), 400
-
-    conn = get_db_connection()
-    conn.execute(
-        '''
-        INSERT INTO nodes (machine_key, node_key, user_id, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?)
-        ''',
-        (machine_key, node_key, user_id, created_at, created_at)
-    )
-    conn.commit()
-    conn.close()
-    return jsonify({'message': 'Node created successfully!'}), 201
-
 @nodes_bp.route('/nodes/<int:node_id>', methods=['PUT'])
 @token_required
 def update_node(current_user, node_id):

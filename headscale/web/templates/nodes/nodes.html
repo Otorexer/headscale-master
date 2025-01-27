@@ -132,53 +132,6 @@
     }
   }
 
-  // Create Node Modal (Optional)
-  function showCreateNodeModal() {
-    document.getElementById("create-node-modal").style.display = "block";
-  }
-  function closeCreateNodeModal() {
-    document.getElementById("create-node-modal").style.display = "none";
-    document.getElementById("create-node-user-name").value = "";
-    document.getElementById("create-node-ipv4").value = "";
-    document.getElementById("create-node-hostname").value = "";
-    document.getElementById("create-node-given-name").value = "";
-  }
-
-  async function createNode() {
-    const userName = document.getElementById("create-node-user-name").value.trim();
-    const ipv4 = document.getElementById("create-node-ipv4").value.trim();
-    const hostname = document.getElementById("create-node-hostname").value.trim();
-    const givenName = document.getElementById("create-node-given-name").value.trim();
-
-    if (!userName || !ipv4 || !hostname) {
-      alert("User Name, IPv4, and Hostname are required!");
-      return;
-    }
-
-    const payload = {
-      user_name: userName,
-      ipv4: ipv4,
-      hostname: hostname,
-      given_name: givenName
-    };
-
-    try {
-      const response = await authFetch(`${API_BASE_URL}/nodes`, {
-        method: "POST",
-        body: JSON.stringify(payload)
-      });
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to create node");
-      }
-      alert("Node created successfully!");
-      closeCreateNodeModal();
-      fetchNodes();
-    } catch (error) {
-      console.error("Error creating node:", error);
-      alert(`Failed to create node. ${error.message}`);
-    }
-  }
 
   function confirmDeleteNode(nodeId) {
     const node = nodesData.find((n) => n.id === nodeId);
@@ -239,11 +192,6 @@
 <input type="text" id="search-box" placeholder="Search..." style="margin-bottom: 10px; width: 100%; padding: 10px"
   oninput="filterAndSortNodes()" />
 
-<!-- Create Node Button -->
-<div style="margin-bottom: 10px">
-  <button onclick="showCreateNodeModal()">Create Node</button>
-</div>
-
 <!-- Table -->
 <table id="nodes-table" border="1" style="width: 100%; text-align: left">
   <thead>
@@ -288,36 +236,6 @@
 
   <button onclick="updateNode()">Save Changes</button>
   <button onclick="closeEditNodeModal()">Cancel</button>
-</div>
-
-<!-- Create Node Modal -->
-<div id="create-node-modal" style="
-    display: none;
-    position: fixed;
-    top: 15%;
-    left: 35%;
-    width: 30%;
-    background: white;
-    border: 1px solid black;
-    padding: 20px;
-    z-index: 1000;
-  ">
-  <h3>Create Node</h3>
-
-  <label for="create-node-user-name">User Name:</label>
-  <input type="text" id="create-node-user-name" style="margin-bottom: 10px; width: 100%; padding: 10px" />
-
-  <label for="create-node-ipv4">IPv4:</label>
-  <input type="text" id="create-node-ipv4" style="margin-bottom: 10px; width: 100%; padding: 10px" />
-
-  <label for="create-node-hostname">Hostname:</label>
-  <input type="text" id="create-node-hostname" style="margin-bottom: 10px; width: 100%; padding: 10px" />
-
-  <label for="create-node-given-name">Given Name:</label>
-  <input type="text" id="create-node-given-name" style="margin-bottom: 10px; width: 100%; padding: 10px" />
-
-  <button onclick="createNode()">Create Node</button>
-  <button onclick="closeCreateNodeModal()">Cancel</button>
 </div>
 
 {% endblock %}
