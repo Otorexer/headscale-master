@@ -255,6 +255,7 @@
         const data = await response.json();
         const user = data.current_user;
         currentUserElement.textContent = `Logged in as: ${user.name} ${user.admin ? "(Admin)" : ""}`;
+        localStorage.setItem('isAdmin', user.admin ? 'true' : 'false'); // Store admin status in localStorage
       } catch (error) {
         console.error("Error fetching current user:", error);
         currentUserElement.textContent = "Error loading user info";
