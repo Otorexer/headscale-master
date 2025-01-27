@@ -38,6 +38,11 @@
       }
       return response;
     }
+
+    function logout() {
+      localStorage.removeItem('token');
+      window.location.href = '/login';
+    }
   </script>
 
   <!-- Base CSS -->
@@ -180,6 +185,7 @@
       <a href="/login" onclick="persistMenuState()">Login</a>
       <a href="/register_user" onclick="persistMenuState()">Register User</a>
       <a href="/web_users" onclick="persistMenuState()">Web Users</a> <!-- New Menu Item -->
+      <a href="javascript:void(0);" onclick="logout()">Logout</a> <!-- Logout Link -->
     </div>
 
     <!-- Main Content -->
