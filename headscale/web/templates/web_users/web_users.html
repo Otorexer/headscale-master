@@ -29,12 +29,66 @@
         tableBody.innerHTML = "";
         users.forEach(user => {
             const row = document.createElement("tr");
+            let actionsHTML = '';
+            if (localStorage.getItem('isAdmin') === 'true') {
+                actionsHTML = `<button onclick="showEditWebUserModal('${user.public_id}', '${user.name}')">Edit</button>`;
+            }
             row.innerHTML = `
                 <td>${user.name}</td>
                 <td>${user.admin ? 'Yes' : 'No'}</td>
+                <td>${actionsHTML}</td>
             `;
             tableBody.appendChild(row);
         });
+    }
+
+    function showEditWebUserModal(publicId, username) {
+        document.getElementById("edit-web-user-public-id").value = publicId;
+        document.getElementById("edit-web-user-name").value = username;
+        document.getElementById("edit-web-user-modal").style.display = "block";
+    }
+
+    function closeEditWebUserModal() {
+        document.getElementById("edit-web-user-modal").style.display = "none";
+        document.getElementById("edit-web-user-public-id").value = "";
+        document.getElementById("edit-web-user-name").value = "";
+        document.getElementById("edit-web-user-password").value = "";
+    }
+
+    async function updateWebUser() {
+        const publicId = document.getElementById("edit-web-user-public-id").value.trim();
+        const username = document.getElementById("edit-web-user-name").value.trim();
+        const password = document.getElementById("edit-web-user-password").value.trim();
+
+        if (!username || !password) {
+            alert("Username and password are required!");
+            return;
+        }
+
+        try {
+            const response = await authFetch(`${API_BASE_URL}/web_users/${publicId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    name: username,
+                    password: password
+                }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(`Failed to update web user: ${response.status} ${JSON.stringify(errorData)}`);
+            }
+
+            alert("Web user updated successfully.");
+            closeEditWebUserModal();
+            fetchWebUsers(); // Refresh the user list
+        } catch (error) {
+            console.error("Error updating web user:", error);
+            alert(`Error updating web user: ${error.message}`);
+        }
     }
 
 
@@ -43,11 +97,37 @@
     });
 </script>
 
+<!-- Edit Web User Modal -->
+<div id="edit-web-user-modal" style="
+    display: none;
+    position: fixed;
+    top: 20%;
+    left: 30%;
+    width: 40%;
+    background: white;
+    border: 1px solid black;
+    padding: 20px;
+    z-index: 1000;
+  ">
+    <h3>Edit Web User</h3>
+    <input type="hidden" id="edit-web-user-public-id">
+
+    <label for="edit-web-user-name">Username:</label>
+    <input type="text" id="edit-web-user-name" style="margin-bottom: 10px; width: 100%; padding: 10px"/>
+
+    <label for="edit-web-user-password">New Password:</label>
+    <input type="password" id="edit-web-user-password" style="margin-bottom: 10px; width: 100%; padding: 10px" />
+
+    <button onclick="updateWebUser()">Save Changes</button>
+    <button onclick="closeEditWebUserModal()">Cancel</button>
+</div>
+
 <table id="web-users-table" border="1" style="width: 100%; text-align: left">
     <thead>
         <tr>
             <th>Name</th>
             <th>Admin</th>
+            <th>Actions</th>
         </tr>
     </thead>
     <tbody></tbody>
