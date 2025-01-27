@@ -78,13 +78,14 @@ def get_web_users(current_user):
     Requires authentication.
     """
     conn = get_db_connection()
-    users = conn.execute('SELECT name, admin FROM web_users').fetchall()
+    users = conn.execute('SELECT public_id, name, admin FROM web_users').fetchall()
     conn.close()
     
     # Convert to a list of dictionaries, including only required fields
     users_list = []
     for user in users:
         users_list.append({
+            'public_id': user['public_id'],
             'name': user['name'],
             'admin': bool(user['admin'])  # Convert int to bool
         })
@@ -104,3 +105,34 @@ def get_current_user(current_user):
         # Add more fields if necessary
     }
     return jsonify({'current_user': user_info}), 200
+
+@web_users_bp.route('/web_users/<public_id>', methods=['PUT'])
+@token_required
+def update_web_user(current_user, public_id):
+    if not current_user['admin']:
+        return jsonify({'message': 'Admin access required'}), 403
+
+    data = request.get_json()
+    if not data or (not data.get('name') and not data.get('password')):
+        return jsonify({'message': 'Name or password is required'}), 400
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        if data.get('password'):
+            hashed_password = generate_password_hash(data['password'], method='pbkdf2:sha256')
+            cursor.execute("UPDATE web_users SET password = ? WHERE public_id = ?", (hashed_password, public_id))
+        if data.get('name'):
+            cursor.execute("UPDATE web_users SET name = ? WHERE public_id = ?", (data['name'], public_id))
+        
+        if cursor.rowcount == 0:
+            conn.close()
+            return jsonify({'message': 'User not found'}), 404
+        
+        conn.commit()
+        conn.close()
+        return jsonify({'message': 'User updated successfully'}), 200
+    except Exception as e:
+        conn.close()
+        return jsonify({'message': 'Update failed', 'error': str(e)}), 500
