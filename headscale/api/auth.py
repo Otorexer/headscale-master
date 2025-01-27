@@ -37,3 +37,33 @@ def token_required(f):
         return f(current_user, *args, **kwargs)
 
     return decorator
+
+
+def web_admin_required(f):
+    @wraps(f)
+    def decorator(*args, **kwargs):
+        token = None
+
+        # JWT is passed in the request header
+        if 'x-access-tokens' in request.headers:
+            token = request.headers['x-access-tokens']
+
+        if not token:
+            return jsonify({'message': 'A valid token is missing'}), 401
+
+        try:
+            # Decode the token to obtain the payload
+            data = jwt.decode(token, current_app.config['SECRET_KEY'], algorithms=["HS256"])
+            # Connect to the database to retrieve the current user
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM web_users WHERE public_id = ?", (data['public_id'],))
+            current_user = cursor.fetchone()
+            conn.close()
+            if current_user is None or not current_user['admin']: # Check for admin status
+                return jsonify({'message': 'Admin access required'}), 403 # Return 403 for non-admin users
+        except Exception:
+            return jsonify({'message': 'Token is invalid'}), 401
+        # Pass the current_user to the route if admin
+        return f(current_user, *args, **kwargs)
+    return decorator
